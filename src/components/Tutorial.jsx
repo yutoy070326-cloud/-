@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { loadTutorialPref, saveTutorialPref } from '../lib/tutorial.js';
 
 const SLIDES = [
@@ -45,13 +45,20 @@ export default function Tutorial({ onClose }) {
     onClose();
   };
 
+  // Esc キーでもスキップできる
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && close();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
   return (
     <div className="sheet-backdrop tutorial-backdrop">
       <div className="tutorial" role="dialog" aria-modal="true" aria-label="使い方" data-testid="tutorial">
         <button className="tutorial-skip" onClick={close} data-testid="tutorial-skip">
-          {last ? '閉じる' : 'スキップ'}
+          {last ? '閉じる' : 'スキップ ✕'}
         </button>
-        <div className="tutorial-body" key={i}>
+        <div className="tutorial-body" key={i} style={{ paddingTop: 22 }}>
           <div className="tutorial-ico" aria-hidden="true">{s.ico}</div>
           <h2 className="tutorial-title" data-testid="tutorial-title">{s.title}</h2>
           {s.body.map((t) => <p key={t} className="tutorial-text">{t}</p>)}

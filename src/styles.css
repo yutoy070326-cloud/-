@@ -132,13 +132,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .popup-foot { margin-top: 8px; font-size: 10px; color: #8d877d; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .popup-always { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #b8b3aa; padding: 4px 0; }
 .popup-always input { margin: 0; }
-.popup-more-btn { margin-top: 8px; padding: 6px 12px; font-size: 12px; color: #ffd21f; background: transparent; border: 1px solid #5a554c; border-radius: 14px; }
-.popup-more { margin-top: 8px; padding-top: 6px; border-top: 1px solid #44403a; }
-.popup-more-title { font-size: 11px; color: #b8b3aa; }
-.popup-more-item { margin-top: 6px; }
-.popup-more-meaning { font-size: 14px; }
-.popup-more-usage { font-size: 11px; color: #ffd21f; }
-.popup-more-ex { font-size: 12px; color: #d4cfc5; font-style: italic; }
 
 /* ---- toast ---- */
 .toast {
@@ -538,7 +531,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tutorial-link { align-self: center; margin-top: 22px; }
 .tutorial-backdrop { align-items: center; justify-content: center; }
 .tutorial { position: relative; width: min(92vw, 420px); max-height: 92vh; overflow: auto; background: var(--surface, #fff); border-radius: 22px; padding: 26px 22px 18px; box-shadow: 0 20px 50px rgba(0,0,0,.35); display: flex; flex-direction: column; gap: 12px; }
-.tutorial-skip { position: absolute; top: 12px; right: 14px; border: none; background: none; font: inherit; font-size: 13px; color: var(--muted); cursor: pointer; padding: 6px; }
+.tutorial-skip { position: absolute; top: 10px; right: 12px; border: 1px solid var(--line, #ddd); background: var(--surface, #fff); font: inherit; font-size: 13px; font-weight: 600; color: var(--text, #333); cursor: pointer; padding: 7px 14px; border-radius: 16px; }
 .tutorial-body { text-align: center; animation: page-in .35s ease both; min-height: 230px; }
 .tutorial-ico { font-size: 54px; margin: 8px 0 6px; }
 .tutorial-title { margin: 0 0 10px; font-size: 19px; }
@@ -571,3 +564,27 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .switch-row input[type='time'] { width: auto; min-width: 110px; }
 .hint.ok { color: #2b8a3e; }
 .hint.small { font-size: 12px; }
+
+/* ---- 「詳しく見る」（ポップアップ・単語テスト共通）---- */
+.popup-form { margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: rgba(255, 210, 31, 0.18); color: #ffd21f; font-size: 11px; }
+.wd { margin-top: 8px; }
+.wd-btn { padding: 6px 12px; font: inherit; font-size: 12px; background: transparent; border: 1px solid currentColor; border-radius: 14px; cursor: pointer; }
+.popup .wd-btn { color: #ffd21f; }
+.flip-face .wd-btn { color: #3b5bdb; }
+.wd-panel { margin-bottom: 8px; padding-top: 6px; border-top: 1px solid rgba(128, 128, 128, 0.35); text-align: left; }
+.wd-block { margin-bottom: 8px; }
+.wd-title { font-size: 11px; opacity: 0.7; }
+.wd-table { width: 100%; margin-top: 4px; border-collapse: collapse; font-size: 13px; }
+.wd-table th { padding: 3px 6px 3px 0; font-weight: 400; font-size: 11px; opacity: 0.75; text-align: left; width: 50%; }
+.wd-table td { padding: 3px 0; font-weight: 600; }
+.wd-table tr { border-bottom: 1px solid rgba(128, 128, 128, 0.2); }
+.wd-table tr.hit { background: rgba(255, 210, 31, 0.28); }
+.wd-note { margin-top: 4px; font-size: 10px; opacity: 0.65; }
+.wd-item { margin-top: 6px; }
+.wd-meaning { font-size: 14px; }
+.wd-usage { font-size: 11px; opacity: 0.8; }
+.wd-ex { font-size: 12px; font-style: italic; opacity: 0.85; }
+.wd-always { display: inline-flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 11px; color: var(--muted); }
+.wd-always input { margin: 0; }
+.fc-back-actions { margin-top: auto; }
+.flip.tall .flip-inner { min-height: 560px; }

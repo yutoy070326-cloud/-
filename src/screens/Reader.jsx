@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import { tokenize, sentenceAround } from '../lib/tokenize.js';
 import { findRange, lookupWord } from '../lib/dictionary.js';
+import WordDetail from '../components/WordDetail.jsx';
 import { loadAlwaysDetail, saveAlwaysDetail } from '../lib/detailPref.js';
 import { translateSentences, translateSelection } from '../lib/translate.js';
 import { addToWordbook, upsertMaterial } from '../lib/storage.js';
@@ -571,34 +572,18 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
               </div>
               {popupHl.entry ? (
                 <>
-                  <div className="popup-pos">{popupHl.entry.pos}</div>
+                  <div className="popup-pos">
+                    {popupHl.entry.pos}
+                    {popupHl.entry.form && <span className="popup-form" data-testid="word-form">{popupHl.entry.form}</span>}
+                  </div>
                   <div className="popup-meaning">{popupHl.entry.meaning}</div>
                   {popupHl.entry.conj && <div className="popup-conj">{popupHl.entry.conj}</div>}
-                  {popupHl.entry.more?.length > 0 && (
-                    <div onClick={(e) => e.stopPropagation()}>
-                      {alwaysDetail || openDetailId === popup.id ? (
-                        <div className="popup-more">
-                          <div className="popup-more-title">ほかの意味・使い方</div>
-                          {popupHl.entry.more.map((m, i) => (
-                            <div key={i} className="popup-more-item">
-                              <div className="popup-more-meaning">{m.meaning}</div>
-                              {m.usage && <div className="popup-more-usage">{m.usage}</div>}
-                              {m.example && <div className="popup-more-ex">{m.example}</div>}
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                      {!alwaysDetail && (
-                        <button
-                          type="button"
-                          className="popup-more-btn"
-                          onClick={() => setOpenDetailId((id) => (id === popup.id ? null : popup.id))}
-                        >
-                          {openDetailId === popup.id ? '閉じる ▲' : '詳しく見る ▼'}
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  <WordDetail
+                    detail={popupHl.entry}
+                    open={openDetailId === popup.id}
+                    always={alwaysDetail}
+                    onToggle={() => setOpenDetailId((id) => (id === popup.id ? null : popup.id))}
+                  />
                 </>
               ) : (
                 <div className="popup-loading">調べています…</div>

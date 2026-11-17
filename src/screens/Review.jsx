@@ -4,6 +4,9 @@ import { langName } from '../lib/storyAI.js';
 import { isDue, applyPractice, STEP_LABELS, formatRemaining } from '../lib/srs.js';
 import { matchesFilter } from '../lib/folders.js';
 import StepBadge from '../components/StepBadge.jsx';
+import WordDetail, { hasDetail } from '../components/WordDetail.jsx';
+import { getDetail } from '../lib/dictionary.js';
+import { loadAlwaysDetail, saveAlwaysDetail } from '../lib/detailPref.js';
 
 // 例文の中の学習対象の語を目立たせる
 function Context({ context, text }) {
@@ -34,6 +37,8 @@ export default function Review({ filter, onExit }) {
   const [flipped, setFlipped] = useState(false);
   const [stats, setStats] = useState({ ok: 0, ng: 0, mastered: 0 });
   const [feedback, setFeedback] = useState(null); // { ok, text }
+  const [detailOpen, setDetailOpen] = useState(false); // 「詳しく見る」を開いているか
+  const [alwaysDetail, setAlwaysDetail] = useState(loadAlwaysDetail);
 
   useEffect(() => {
     if (!feedback) return undefined;
@@ -44,6 +49,8 @@ export default function Review({ filter, onExit }) {
   const total = cards.length;
   const done = i >= total;
   const cur = done ? null : cards[i];
+  // 辞書から何形か・活用表・ほかの意味を引く（保存データは増やさず、表示のたびに引く）
+  const detail = cur ? getDetail(cur.lang, cur.text || cur.lemma) ?? getDetail(cur.lang, cur.lemma) : null;
 
   const answer = (remembered) => {
     if (!cur) return;
@@ -64,6 +71,7 @@ export default function Review({ filter, onExit }) {
     setFeedback({ ok: remembered, text });
     setI(i + 1);
     setFlipped(false);
+    setDetailOpen(false);
   };
 
   // 次に復習が来る時刻（終了画面で表示）
@@ -103,7 +111,7 @@ export default function Review({ filter, onExit }) {
         {!done && cur && (
           <>
             <div
-              className={'flip' + (flipped ? ' flipped' : '')}
+              className={'flip' + (flipped ? ' flipped' : '') + (hasDetail(detail) && (detailOpen || alwaysDetail) ? ' tall' : '')}
               role="button"
               tabIndex={0}
               aria-label={flipped ? '表面に戻す' : 'タップして意味を見る'}
@@ -119,7 +127,7 @@ export default function Review({ filter, onExit }) {
                   </div>
                   <div className="fc-word" lang={cur.lang}>{cur.lemma}</div>
                   {cur.text && cur.text.toLowerCase() !== String(cur.lemma).toLowerCase() && (
-                    <div className="fc-form">本文中: {cur.text}</div>
+                    <div className="fc-form">本文中: {cur.text}{detail?.form ? `（${detail.form}）` : ''}</div>
                   )}
                   <Context context={cur.context} text={cur.text} />
                   <div className="fc-hint">タップして意味を見る</div>
@@ -131,6 +139,25 @@ export default function Review({ filter, onExit }) {
                   </div>
                   <div className="fc-meaning">{cur.meaning}</div>
                   {cur.conj && <div className="fc-conj">{cur.conj}</div>}
+                  <WordDetail
+                    detail={detail}
+                    open={detailOpen}
+                    always={alwaysDetail}
+                    onToggle={() => setDetailOpen((o) => !o)}
+                  />
+                  {hasDetail(detail) && (
+                    <label className="wd-always" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={alwaysDetail}
+                        onChange={(e) => {
+                          setAlwaysDetail(e.target.checked);
+                          saveAlwaysDetail(e.target.checked);
+                        }}
+                      />
+                      いつも詳しく表示
+                    </label>
+                  )}
                   <div className="fc-hint">もう一度タップで表に戻る</div>
                 </div>
               </div>

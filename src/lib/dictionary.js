@@ -1,3 +1,5 @@
+import { inflectInfo } from './inflect.js';
+
 // ===== モック辞書 =====
 // 本番ではここを AI / 辞書API 呼び出しに差し替える（lookupWord のシグネチャはそのまま）。
 // 各エントリ: [表層形（|区切り。活用形・熟語を含む）, 原形, 品詞, 意味, 活用]
@@ -238,7 +240,11 @@ for (const [lang, rows] of Object.entries(RAW)) {
   const map = new Map();
   let maxWords = 1;
   for (const [forms, lemma, pos, meaning, conj] of rows) {
-    const entry = { lemma, pos, meaning, conj, more: EXTRA[`${lang}:${lemma}`] ?? [] };
+    const entry = {
+      lemma, pos, meaning, conj,
+      forms: forms.split('|'), // 活用形の一覧（何形かの判定に使う）
+      more: EXTRA[`${lang}:${lemma}`] ?? [],
+    };
     for (const f of forms.split('|')) {
       const key = normalizeKey(f);
       if (!map.has(key)) map.set(key, entry);
@@ -288,7 +294,7 @@ export function findRange(tokens, idx, lang) {
 export async function lookupWord(text, lang, context = '') {
   await new Promise((r) => setTimeout(r, 150)); // 通信っぽい遅延
   const hit = INDEX[lang]?.get(normalizeKey(text));
-  if (hit) return { text, ...hit, found: true };
+  if (hit) return { text, ...hit, ...inflectInfo(lang, hit, text), found: true };
   return {
     text,
     lemma: text,
@@ -296,7 +302,17 @@ export async function lookupWord(text, lang, context = '') {
     meaning: '（モック辞書に未登録）',
     conj: '',
     more: [],
+    form: null,
+    table: null,
     found: false,
     context,
   };
+}
+
+// 辞書にある語の詳細（何形か・活用表・ほかの意味）を同期で返す。単語テストで使う。
+// 見つからなければ null。
+export function getDetail(lang, text) {
+  const hit = INDEX[lang]?.get(normalizeKey(text));
+  if (!hit) return null;
+  return { more: hit.more, ...inflectInfo(lang, hit, text) };
 }
