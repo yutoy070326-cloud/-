@@ -75,9 +75,7 @@ export function computeSummary(startedAt, now = Date.now()) {
   const masteredTotal = sumOf(masteredByLang);
   const studiedTotal = sumOf(studiedByLang);
   const wordsTotal = masteredTotal + studiedTotal;
-  recordStudy(now); // 学習を終えた日も「続けた日」に数える
-  const streak = streakDays(now);
-  return { startedAt, minutes, bookRows, texts, masteredByLang, studiedByLang, masteredTotal, studiedTotal, wordsTotal, streak };
+  return { startedAt, minutes, bookRows, texts, masteredByLang, studiedByLang, masteredTotal, studiedTotal, wordsTotal };
 }
 
 // 文章1つぶんの「事実」の一行（花丸が付く）
@@ -98,20 +96,32 @@ export function textLine(x) {
   return t('note.text', '文章「{title}」を読んだ', { title });
 }
 
-// 達成ノートの行（事実だけを書く。1行ずつ花丸が付く）。
-// existing: 同じ日のノートにすでに書いた行。重複する行（「今日も学習をはじめた」など）は書かない
-export function buildLines(sum, existing = new Set()) {
+// 達成したことの行（事実だけを書く。1行ずつ花丸が付く）。key が同じ行は、あとから内容を更新する（ページ数が増えたときなど）
+export function factLines(sum, firstOfDay) {
   const lines = [];
-  const detail = (o) => Object.entries(o).filter(([, n]) => n > 0).map(([l, n]) => t('note.words.lang', '{lang}：{n}単語', { lang: langName(l), n })).join(' ');
-  for (const b of sum.bookRows) lines.push(t('note.book', '「{title}」を{read}ページ読んだ ({done}/{total})', { title: b.title, read: b.read, done: b.done, total: b.total }));
-  for (const x of sum.texts.slice(0, 6)) lines.push(textLine(x));
-  if (sum.texts.length > 6) lines.push(t('note.text.more', 'ほか{n}件の文章を読んだ', { n: sum.texts.length - 6 }));
-  if (sum.masteredTotal > 0) lines.push(t('note.mastered', '単語を{n}単語覚えた（{detail}）', { n: sum.masteredTotal, detail: detail(sum.masteredByLang) }));
-  if (sum.studiedTotal > 0) lines.push(t('note.studied', '単語を{n}単語勉強した（{detail}）', { n: sum.studiedTotal, detail: detail(sum.studiedByLang) }));
-  if (sum.minutes >= 10) lines.push(t('note.minutes', '{n}分間、学習をがんばった', { n: sum.minutes }));
-  if (lines.length === 0) lines.push(t('note.started', '今日も学習をはじめた'));
-  const seen = new Set(existing);
-  return lines.filter((text) => (seen.has(text) ? false : (seen.add(text), true))).map((text) => ({ text }));
+  for (const b of sum.bookRows) lines.push({ key: `book:${b.id}`, text: t('note.book', '「{title}」を{read}ページ読んだ ({done}/{total})', { title: b.title, read: b.read, done: b.done, total: b.total }) });
+  for (const x of sum.texts.slice(0, 6)) lines.push({ key: `text:${x.kind}:${x.title}`, text: textLine(x) });
+  if (sum.texts.length > 6) lines.push({ key: 'text:more', text: t('note.text.more', 'ほか{n}件の文章を読んだ', { n: sum.texts.length - 6 }) });
+  // 単語：学習した数と、そのうち覚えた（ステップ5まで終えた）数。2回目以降は「＋」で、その回に増えた分を書く
+  if (sum.wordsTotal > 0) {
+    const key = firstOfDay ? 'note.words.first' : 'note.words.more';
+    const base = sum.masteredTotal > 0
+      ? t(`${key}.m`, firstOfDay ? '{n}単語学習し、{m}単語覚えた！' : '＋{n}単語学習し、{m}単語覚えた！', { n: sum.wordsTotal, m: sum.masteredTotal })
+      : t(key, firstOfDay ? '{n}単語学習した！' : '＋{n}単語学習した！', { n: sum.wordsTotal });
+    lines.push({ key: 'words', text: base });
+  }
+  return lines;
+}
+
+// 学習時間の行（学習を終えたときに書く）。1回目は「頑張った」、2回目以降は「＋○分」
+export function minutesLine(minutes, firstOfDay) {
+  if (minutes < 1) return null;
+  return {
+    key: 'minutes',
+    text: firstOfDay
+      ? t('note.minutes.first', '{n}分間学習を頑張った！', { n: minutes })
+      : t('note.minutes.more', '＋{n}分勉強した！', { n: minutes }),
+  };
 }
 
 // ---- 記念メダル ----
@@ -172,26 +182,64 @@ export function newMedals(sum, have = loadMedals(), now = Date.now()) {
   return out;
 }
 
-// 同じ日のノートに、すでに書いた行（重複を避けるため）
-export function todayLineTexts(now = Date.now()) {
-  const day = dayStr(now);
-  const set = new Set();
-  for (const n of loadNotes()) if (dayStr(n.at) === day) for (const l of n.lines) set.add(l.text);
-  return set;
+const sameDay = (a, b) => dayStr(a) === dayStr(b);
+const noteIdOf = (startedAt) => `n-s-${startedAt}`;
+
+// 今回の学習（スタート〜終了）の達成を、今日の達成ノートに書く（自動）。
+// 新しく達成したことが見つかるたびに呼ぶ。同じ日に何回も学習した場合は、前の回に書いた行はくり返さず、
+// 学習時間と単語数は「その回に増えた分」を書く。finish=true のときは、学習時間の行も書く。
+// 返り値: { note, added: [新しく書いた／更新した行], first: その日の1回目か } | null
+export function syncSessionNote({ finish = false, now = Date.now() } = {}) {
+  const s = loadSession();
+  if (!s) return null;
+  const sum = computeSummary(s.startedAt, now);
+  const id = noteIdOf(s.startedAt);
+  const all = loadNotes();
+  const existing = all.find((n) => n.id === id);
+  const others = all.filter((n) => n.id !== id && sameDay(n.at, now));
+  const first = !others.some((n) => n.finished); // その日の1回目の学習か
+  const prior = new Set(others.flatMap((n) => n.lines.map((l) => l.text)));
+  const wanted = factLines(sum, first).filter((l) => l.key === 'words' || !prior.has(l.text)); // 前の回と同じ事実は書かない
+  if (finish) {
+    const ml = minutesLine(sum.minutes, first);
+    if (ml) wanted.push(ml);
+  }
+  const lines = existing ? [...existing.lines] : [];
+  const added = [];
+  for (const w of wanted) {
+    const i = lines.findIndex((l) => l.key === w.key);
+    if (i >= 0) {
+      if (lines[i].text !== w.text) { lines[i] = { ...lines[i], text: w.text }; added.push(lines[i]); }
+    } else if (!lines.some((l) => l.text === w.text)) {
+      lines.push(w);
+      added.push(w);
+    }
+  }
+  if (lines.length === 0) return { note: existing ?? null, added, first, sum };
+  const note = {
+    ...(existing ?? { id, at: now, diary: '', medalIds: [] }),
+    lines,
+    stats: { minutes: sum.minutes, studied: sum.wordsTotal, mastered: sum.masteredTotal },
+    finished: finish || !!existing?.finished,
+  };
+  writeJson(NOTES_KEY, [note, ...all.filter((n) => n.id !== id)].slice(0, 1000));
+  return { note, added, first, sum };
 }
 
-// ノートとメダルを保存する（終了ボタンを押した時点で保存。演出の途中で閉じても残る）。
-// 新しく書く行がないとき（今日すでに書いた内容だけ）は、ノートは作らず null を返す。返り値: ノートの id | null
-export function saveFinish(lines, medals, now = Date.now()) {
-  let id = null;
-  if (lines.length > 0) {
-    const notes = loadNotes();
-    id = `n-${now}`;
-    notes.unshift({ id, at: now, lines, medalIds: medals.map((m) => m.id) });
-    writeJson(NOTES_KEY, notes.slice(0, 1000));
-  }
+// 学習を終える：ノートを仕上げて、メダルを保存する。返り値: { note, medals, sum }
+export function finishSession(now = Date.now()) {
+  const s = loadSession();
+  recordStudy(now); // 学習を終えた日も「続けた日」に数える
+  const res = syncSessionNote({ finish: true, now });
+  const sum = res?.sum ?? computeSummary(s?.startedAt ?? new Date(now).setHours(0, 0, 0, 0), now);
+  sum.streak = streakDays(now);
+  const medals = newMedals(sum, loadMedals(), now);
   if (medals.length) writeJson(MEDALS_KEY, [...loadMedals(), ...medals]);
-  return id;
+  if (res?.note && medals.length) {
+    const notes = loadNotes().map((n) => (n.id === res.note.id ? { ...n, medalIds: [...(n.medalIds ?? []), ...medals.map((m) => m.id)] } : n));
+    writeJson(NOTES_KEY, notes);
+  }
+  return { note: res?.note ?? null, noteId: res?.note?.id ?? noteIdOf(s?.startedAt ?? now), medals, sum, first: res?.first ?? true };
 }
 
 // 自分で書いた「達成したこと」と、一言日記を、ノートに足す（ノートがまだ無いときは、書いた内容があれば作る）
@@ -201,11 +249,22 @@ export function updateNote(id, { ownLines = [], diary = '' }, now = Date.now()) 
   const notes = loadNotes();
   if (!id || !notes.some((n) => n.id === id)) {
     if (own.length === 0 && !text) return;
-    notes.unshift({ id: `n-${now}`, at: now, lines: own.map((x) => ({ text: x, own: true })), diary: text, medalIds: [] });
+    notes.unshift({ id: id || `n-${now}`, at: now, lines: own.map((x) => ({ text: x, own: true })), diary: text, medalIds: [], finished: true });
     writeJson(NOTES_KEY, notes.slice(0, 1000));
     return;
   }
-  writeJson(NOTES_KEY, notes.map((n) => (n.id === id ? { ...n, lines: [...n.lines, ...own.map((x) => ({ text: x, own: true }))], diary: text } : n)));
+  writeJson(NOTES_KEY, notes.map((n) => (n.id === id ? { ...n, lines: [...n.lines, ...own.map((x) => ({ text: x, own: true }))], diary: text || n.diary || '' } : n)));
+}
+
+// ある日（または全期間）の合計：総学習時間・学習した単語数・覚えた単語数
+export function totalsOf(notes) {
+  const sum = { minutes: 0, studied: 0, mastered: 0 };
+  for (const n of notes) {
+    sum.minutes += n.stats?.minutes ?? 0;
+    sum.studied += n.stats?.studied ?? 0;
+    sum.mastered += n.stats?.mastered ?? 0;
+  }
+  return sum;
 }
 
 // メダルアルバムを見たら「NEW」を外す

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import Hanamaru from '../components/Hanamaru.jsx';
-import { loadNotes, loadMedals, medalName } from '../lib/diary.js';
+import { loadNotes, loadMedals, medalName, totalsOf } from '../lib/diary.js';
 import { dayStr } from '../lib/studyLog.js';
 import { t, uiLocale } from '../lib/i18n.js';
 import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
@@ -29,6 +29,9 @@ export default function NotesScreen({ onBack }) {
   const weekdays = Array.from({ length: 7 }, (_, i) => new Date(2023, 0, 1 + i).toLocaleDateString(uiLocale(), { weekday: 'short' }));
   const shift = (n) => setMonth(new Date(y, mo + n, 1));
   const dayNotes = byDay[sel] ?? [];
+  const dayTotals = totalsOf(dayNotes);
+  const allTotals = totalsOf(notes);
+  const fmtMin = (m) => (m >= 60 ? t('time.hm', '{h}時間{m}分', { h: Math.floor(m / 60), m: m % 60 }) : t('time.m', '{m}分', { m }));
   const selDate = new Date(`${sel}T00:00:00`);
 
   return (
@@ -57,8 +60,17 @@ export default function NotesScreen({ onBack }) {
           </div>
         </div>
 
+        <p className="hint all-totals" data-testid="all-totals">{t('notes.all', 'これまでの合計：学習時間 {time}／学習した単語 {studied}単語／覚えた単語 {mastered}単語', { time: fmtMin(allTotals.minutes), studied: allTotals.studied, mastered: allTotals.mastered })}</p>
+
         <section className="note-day" data-testid="day-detail">
           <h3 className="note-day-title">{selDate.toLocaleDateString(uiLocale(), { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}</h3>
+          {dayNotes.length > 0 && (
+            <div className="day-totals" data-testid="day-totals">
+              <div><span>{t('notes.total.time', '総学習時間')}</span><b data-testid="total-time">{fmtMin(dayTotals.minutes)}</b></div>
+              <div><span>{t('notes.total.studied', '学習した単語')}</span><b data-testid="total-studied">{t('notes.words', '{n}単語', { n: dayTotals.studied })}</b></div>
+              <div><span>{t('notes.total.mastered', '覚えた単語')}</span><b data-testid="total-mastered">{t('notes.words', '{n}単語', { n: dayTotals.mastered })}</b></div>
+            </div>
+          )}
           {dayNotes.length === 0 && <p className="empty">{t('notes.none', 'この日の記録はありません。')}</p>}
           {dayNotes.length > 0 && (
             <div className="note-card">

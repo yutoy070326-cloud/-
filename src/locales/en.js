@@ -256,5 +256,19 @@ export default {
  "banner.streak": "{n}-day streak. Keep it going today",
  "banner.start": "Start your streak today",
  "banner.review": "Review",
- "banner.notify": "🔔 Get review reminders by notification"
+ "banner.notify": "🔔 Get review reminders by notification",
+ "toast.note": "📓 Written to your notebook: {text}",
+ "time.hm": "{h}h {m}m",
+ "time.m": "{m} min",
+ "notes.total.time": "Total study time",
+ "notes.total.studied": "Words studied",
+ "notes.total.mastered": "Words mastered",
+ "notes.words": "{n} words",
+ "notes.all": "Overall totals: study time {time} / {studied} words studied / {mastered} words mastered",
+ "note.minutes.first": "Studied hard for {n} minutes!",
+ "note.minutes.more": "+{n} more minutes of study!",
+ "note.words.first": "Studied {n} word(s)!",
+ "note.words.first.m": "Studied {n} word(s) and mastered {m}!",
+ "note.words.more": "+{n} more word(s) studied!",
+ "note.words.more.m": "+{n} more word(s) studied and {m} mastered!"
 };

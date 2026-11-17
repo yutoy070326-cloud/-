@@ -20,7 +20,7 @@ import MedalAlbum from './screens/MedalAlbum.jsx';
 import StampScreen from './screens/StampScreen.jsx';
 import LoginBonus from './components/LoginBonus.jsx';
 import { claimLoginBonus } from './lib/shelf.js';
-import { startSession, loadSession, clearSession, oppositeChar, computeSummary, buildLines, newMedals, saveFinish, updateNote, todayLineTexts } from './lib/diary.js';
+import { startSession, loadSession, clearSession, oppositeChar, finishSession, syncSessionNote, updateNote } from './lib/diary.js';
 import { shouldShowTutorial } from './lib/tutorial.js';
 import { loadWordbook, loadMaterials, loadBooks, loadFiles, migrateLibrary, touchMaterial } from './lib/storage.js';
 import { requestPersistentStorage } from './lib/backup.js';
@@ -72,13 +72,29 @@ export default function App() {
   };
   const endStudy = () => {
     const s = loadSession() ?? { startedAt: new Date().setHours(0, 0, 0, 0), char: char ?? 'boy' };
-    const sum = computeSummary(s.startedAt);
-    const lines = buildLines(sum, todayLineTexts()); // 同じ日にすでに書いた行は、くり返さない
-    const medals = newMedals(sum);
-    const noteId = saveFinish(lines, medals); // 押した時点で保存（演出の途中で閉じても残る）
-    setFinish({ noteId, lines, medals, farewellChar: oppositeChar(s.char) }); // 開始時と反対のキャラクターでお見送り
+    // ノートを仕上げる（学習時間も書く）。押した時点で保存されるので、演出の途中で閉じても残る
+    const r = finishSession();
+    setFinish({ noteId: r.noteId, lines: r.note?.lines ?? [], medals: r.medals, farewellChar: oppositeChar(s.char) }); // 開始時と反対のキャラクターでお見送り
     setPhase('finish');
   };
+
+  // 新しく達成したことが見つかったら、自動で今日の達成ノートに書く（学習中、定期的に・画面を切り替えたときに確認する）
+  const [toast, setToast] = useState(null);
+  useEffect(() => {
+    if (phase !== 'app') return undefined;
+    const run = () => {
+      const r = syncSessionNote();
+      if (r && r.added.length > 0) setToast(t('toast.note', '📓 達成ノートに書きました：{text}', { text: r.added[0].text }));
+    };
+    const id = setTimeout(run, 800);
+    const iv = setInterval(run, 20000);
+    return () => { clearTimeout(id); clearInterval(iv); };
+  }, [phase, screen]);
+  useEffect(() => {
+    if (!toast) return undefined;
+    const id = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(id);
+  }, [toast]);
 
   // 通知：Service Worker 登録 → 起動時・30秒ごと・画面復帰時に「出すべき通知」を判定
   useEffect(() => {
@@ -306,6 +322,7 @@ export default function App() {
       {phase === 'app' && screen !== 'home' && trail.length >= 2 && (
         <button className="home-fab" onClick={() => setScreen('home')} aria-label={t('common.home', 'ホームに戻る')} data-testid="home-fab">🏠</button>
       )}
+      {toast && phase === 'app' && <div className="toast" role="status" data-testid="toast">{toast}</div>}
       {phase === 'app' && bonus && <LoginBonus bonus={bonus} onClose={() => setBonus(null)} />}
       {phase === 'gate' && <StartGate onStart={begin} />}
       {phase === 'intro' && <IntroScene char={char} onDone={() => { setPhase('app'); setBonus(claimLoginBonus()); }} />}

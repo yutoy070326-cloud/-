@@ -36,7 +36,7 @@ export default function Home({
   const now = useNow();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const dueCount = useMemo(() => loadWordbook().filter((w) => isDue(w, now)).length, [now, wordCount]);
-  const [mode, setMode] = useState('paste'); // 'paste' | 'ai'
+  const [mode, setMode] = useState(null); // 詳細設定の窓：null（閉じている）| 'paste' | 'ai'。ボタンを押すたびに開閉する
 
   // ai
   const [lang, setLang] = useState('en');
@@ -130,30 +130,37 @@ export default function Home({
           <button className="btn primary" onClick={onFinishStudy} data-testid="finish-study">{t('home.finish', '🌙 学習を終える')}</button>
         </div>
 
-        <div className="mode-cards">
-          <button
-            className={'mode-card' + (mode === 'paste' ? ' on' : '')}
-            onClick={() => setMode('paste')}
-          >
-            <span className="mode-ico">📋</span>
-            <span className="mode-title">{t('home.paste', '文章をペーストして学ぶ')}</span>
-            <span className="mode-sub">{t('home.paste.sub', '読みたい記事・歌詞・小説の一節など')}</span>
-          </button>
-          <button
-            className={'mode-card' + (mode === 'ai' ? ' on' : '')}
-            onClick={() => setMode('ai')}
-          >
-            <span className="mode-ico">✨</span>
-            <span className="mode-title">{t('home.ai', 'AIに物語を作ってもらい学習する')}</span>
-            <span className="mode-sub">{t('home.ai.sub', '言語・題材・レベルを選ぶだけ')}</span>
-          </button>
-        </div>
-
-        {mode === 'paste' && (
-          <PasteForm onStart={onStart} onOpenBookNew={onOpenBookNew} onMaterialsChanged={onMaterialsChanged} />
-        )}
-
-        {mode === 'ai' && (
+        {/* ボタンを押すと、そのボタンのすぐ下に詳細設定の窓が開く（もう一度押すと閉じる）。最初は閉じている */}
+        <div className="mode-list">
+          <div className="mode-item">
+            <button
+              className={'mode-card' + (mode === 'paste' ? ' on' : '')}
+              onClick={() => setMode((m) => (m === 'paste' ? null : 'paste'))}
+              aria-expanded={mode === 'paste'}
+              data-testid="mode-paste"
+            >
+              <span className="mode-ico">📋</span>
+              <span className="mode-title">{t('home.paste', '文章をペーストして学ぶ')}</span>
+              <span className="mode-sub">{t('home.paste.sub', '読みたい記事・歌詞・小説の一節など')}</span>
+              <span className="mode-chev" aria-hidden="true">{mode === 'paste' ? '▲' : '▼'}</span>
+            </button>
+            {mode === 'paste' && (
+              <PasteForm onStart={onStart} onOpenBookNew={onOpenBookNew} onMaterialsChanged={onMaterialsChanged} />
+            )}
+          </div>
+          <div className="mode-item">
+            <button
+              className={'mode-card' + (mode === 'ai' ? ' on' : '')}
+              onClick={() => setMode((m) => (m === 'ai' ? null : 'ai'))}
+              aria-expanded={mode === 'ai'}
+              data-testid="mode-ai"
+            >
+              <span className="mode-ico">✨</span>
+              <span className="mode-title">{t('home.ai', 'AIに物語を作ってもらい学習する')}</span>
+              <span className="mode-sub">{t('home.ai.sub', '言語・題材・レベルを選ぶだけ')}</span>
+              <span className="mode-chev" aria-hidden="true">{mode === 'ai' ? '▲' : '▼'}</span>
+            </button>
+            {mode === 'ai' && (
           <section className="panel">
             <label className="field-label" htmlFor="ai-lang">{t('form.lang', '学習する言語')}</label>
             <select id="ai-lang" className="input" value={lang} onChange={(e) => setLang(e.target.value)}>
@@ -194,7 +201,9 @@ export default function Home({
             </button>
             <p className="hint">{t('home.ai.mock', '※ いまはモックAIです（用意済みの短編や、テンプレートの文を返します）。')}</p>
           </section>
-        )}
+            )}
+          </div>
+        </div>
         <button className="btn link tutorial-link" onClick={onShowTutorial} data-testid="show-tutorial-home">{t('home.tutorial', '使い方を見る')}</button>
         <BackupPanel onRestored={onDataRestored} />
       </main>

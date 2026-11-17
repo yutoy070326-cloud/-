@@ -878,3 +878,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .reader-nav-label { min-width: 84px; text-align: center; font-size: 13px; }
 .screen .content { padding-bottom: 80px; }
 .tutorial-skip { z-index: 3; }
+
+.toast { position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top)); transform: translateX(-50%); z-index: 230; max-width: min(92vw, 420px); padding: 10px 16px; border-radius: 22px; background: rgba(31, 29, 26, .94); color: #fff; font-size: 13px; box-shadow: 0 4px 14px rgba(0, 0, 0, .35); animation: line-in .4s both; pointer-events: none; }
+
+.day-totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+.day-totals div { padding: 8px 4px; border-radius: 10px; background: #fff6d6; text-align: center; }
+.day-totals span { display: block; font-size: 10px; color: var(--muted); }
+.day-totals b { font-size: 15px; }
+.all-totals { margin: 8px 0 0; text-align: center; }
+
+/* ホームの2つのボタンと、その下に開く詳細設定の窓 */
+.mode-list { display: flex; flex-direction: column; gap: 10px; }
+.mode-item { display: flex; flex-direction: column; gap: 8px; }
+.mode-card { position: relative; width: 100%; }
+.mode-chev { position: absolute; top: 10px; right: 12px; font-size: 11px; color: var(--muted); }
