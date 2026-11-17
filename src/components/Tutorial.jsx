@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { loadTutorialPref, saveTutorialPref } from '../lib/tutorial.js';
+import { t } from '../lib/i18n.js';
 
 const SLIDES = [
   {
@@ -54,28 +55,28 @@ export default function Tutorial({ onClose }) {
 
   return (
     <div className="sheet-backdrop tutorial-backdrop">
-      <div className="tutorial" role="dialog" aria-modal="true" aria-label="使い方" data-testid="tutorial">
+      <div className="tutorial" role="dialog" aria-modal="true" aria-label={t('common.help', '使い方')} data-testid="tutorial">
         <button className="tutorial-skip" onClick={close} data-testid="tutorial-skip">
-          {last ? '閉じる' : 'スキップ ✕'}
+          {last ? t('common.close', '閉じる') : t('tutorial.skip', 'スキップ ✕')}
         </button>
         <div className="tutorial-body" key={i} style={{ paddingTop: 22 }}>
           <div className="tutorial-ico" aria-hidden="true">{s.ico}</div>
-          <h2 className="tutorial-title" data-testid="tutorial-title">{s.title}</h2>
-          {s.body.map((t) => <p key={t} className="tutorial-text">{t}</p>)}
+          <h2 className="tutorial-title" data-testid="tutorial-title">{t(`tut.global.${i}.t`, s.title)}</h2>
+          {s.body.map((b, j) => <p key={j} className="tutorial-text">{t(`tut.global.${i}.b${j}`, b)}</p>)}
         </div>
         <div className="tutorial-dots" aria-label={`${i + 1} / ${SLIDES.length}`}>
           {SLIDES.map((_, k) => <span key={k} className={'dot' + (k === i ? ' on' : '')} />)}
         </div>
         <label className="tutorial-check">
           <input type="checkbox" checked={hide} onChange={(e) => setHide(e.target.checked)} data-testid="tutorial-hide" />
-          次回から表示しない
+          {t('tutorial.never', '次回から表示しない')}
         </label>
         <div className="tutorial-nav">
-          <button className="btn" onClick={() => setI(i - 1)} disabled={i === 0}>戻る</button>
+          <button className="btn" onClick={() => setI(i - 1)} disabled={i === 0}>{t('common.prev', '戻る')}</button>
           {last ? (
-            <button className="btn primary" onClick={close} data-testid="tutorial-start">はじめる</button>
+            <button className="btn primary" onClick={close} data-testid="tutorial-start">{t('tutorial.start', 'はじめる')}</button>
           ) : (
-            <button className="btn primary" onClick={() => setI(i + 1)} data-testid="tutorial-next">次へ</button>
+            <button className="btn primary" onClick={() => setI(i + 1)} data-testid="tutorial-next">{t('common.next', '次へ')}</button>
           )}
         </div>
       </div>

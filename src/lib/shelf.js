@@ -73,16 +73,16 @@ export const storeBlock = (id) => update((s) => ({
 }));
 
 // ---- ログインボーナス（スタンプカード）----
-// 初回に1回、それ以降は毎週月曜日にログインしたとき、スタンプを1つ押して積み木を1つ配る。
-// 返り値: { stamp, block, index } | null（今日はもらえない／もうもらった）
+// ログインした日は毎日スタンプを1つ押す。積み木は、初回と毎週月曜日だけもらえる。
+// 返り値: { stamp, block|null, index } | null（今日はもうスタンプを押した）
 export function claimLoginBonus(now = Date.now(), rng = Math.random) {
   const s = loadShelf();
   const today = dayStr(now);
-  const isMonday = new Date(now).getDay() === 1;
+  if (s.stamps.some((x) => x.day === today)) return null;
   const first = s.stamps.length === 0;
-  if (!first && !(isMonday && !s.stamps.some((x) => x.day === today))) return null;
-  const block = newBlock(now, rng);
-  const stamp = { day: today, at: now, blockId: block.id, first };
-  saveShelf({ ...s, blocks: [...s.blocks, block], stamps: [...s.stamps, stamp] });
+  const giveBlock = first || new Date(now).getDay() === 1;
+  const block = giveBlock ? newBlock(now, rng) : null;
+  const stamp = { day: today, at: now, blockId: block ? block.id : null, first };
+  saveShelf({ ...s, blocks: block ? [...s.blocks, block] : s.blocks, stamps: [...s.stamps, stamp] });
   return { stamp, block, index: s.stamps.length };
 }

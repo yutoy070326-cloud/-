@@ -812,7 +812,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tray-btn { flex: none; white-space: nowrap; }
 .stack-item.draggable { touch-action: none; cursor: grab; }
 .stack-item.dragging { cursor: grabbing; }
-.stack-item.toy-slot { width: 64px; min-width: 64px; background: none; box-shadow: none; overflow: visible; display: flex; align-items: flex-end; justify-content: center; }
+.stack-item.toy-slot { width: 44px; min-width: 44px; background: none; box-shadow: none; overflow: visible; display: flex; align-items: flex-end; justify-content: center; }
 .toy { display: block; }
 .tray-list { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
 .tray-item { display: flex; align-items: center; gap: 8px; }
@@ -854,3 +854,27 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* ===== ホームに戻るボタン・ホームの導線（4つ）===== */
 .home-fab { position: fixed; left: 14px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 50; width: 52px; height: 52px; border: none; border-radius: 50%; background: #1f1d1a; color: #fff; font-size: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, .35); cursor: pointer; }
 .home-actions { grid-template-columns: 1fr 1fr; }
+
+.note-none { margin: 10px 0; padding: 8px 10px; border-radius: 8px; background: #fff6d6; font-size: 13px; }
+
+/* ===== 達成ノートのカレンダー ===== */
+.cal { padding: 8px 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.cal-head .btn { font-size: 20px; padding: 2px 14px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-week { margin-bottom: 4px; text-align: center; font-size: 11px; color: var(--muted); }
+.cal-day { position: relative; aspect-ratio: 1; padding: 0; border: 1px solid transparent; border-radius: 10px; background: transparent; font: inherit; font-size: 14px; cursor: pointer; display: flex; align-items: flex-start; justify-content: center; padding-top: 4px; }
+.cal-day.today { border-color: var(--ink); }
+.cal-day.has { background: #fff3e6; }
+.cal-day.sel { background: var(--ink); color: #fff; }
+.cal-mark { position: absolute; bottom: 1px; left: 0; right: 0; text-align: center; font-size: 11px; font-style: normal; line-height: 1; }
+
+.help-btn { font-size: 12px; padding: 6px 8px; white-space: nowrap; }
+
+/* ===== 前後の文章へ移る ‹ › ===== */
+.reader-nav { position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 45; display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 28px; background: rgba(31, 29, 26, .92); color: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, .35); }
+.reader-nav-btn { width: 40px; height: 40px; padding: 0; border-radius: 50%; border: none; background: #fff; color: #1f1d1a; font-size: 24px; line-height: 1; }
+.reader-nav-btn:disabled { opacity: .35; }
+.reader-nav-label { min-width: 84px; text-align: center; font-size: 13px; }
+.screen .content { padding-bottom: 80px; }
+.tutorial-skip { z-index: 3; }

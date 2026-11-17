@@ -174,6 +174,66 @@ export const CORPUS = [
 const buildText = (story) =>
   story.paragraphs.map((p) => p.map((s) => s[0]).join(' ')).join('\n\n');
 
+// ---- 単語帳の単語から作る物語（モック）----
+// 単語帳からランダムに選んだ単語を、テンプレートの文に入れて物語にする。本番では LLM に単語リストを渡して作らせる。
+// 文ごとの日本語訳も CORPUS に登録するので、翻訳表示もできる。
+const WORD_TEMPLATES = {
+  en: {
+    title: 'Words in My Notebook',
+    intro: ['One quiet evening, Mia opened her notebook and found the word "{w}".', 'ある静かな夜、ミアはノートを開いて、「{w}」という言葉を見つけた。'],
+    mid: [
+      ['It reminded her of "{w}", another word she had learned.', 'それは、前に覚えた「{w}」という言葉を思い出させた。'],
+      ['She wrote a short story that used "{w}".', '彼女は「{w}」を使った短い物語を書いた。'],
+      ['The next day, "{w}" appeared again in a song.', '次の日、「{w}」がまた歌の中に出てきた。'],
+    ],
+    end: ['Little by little, her new words became friends.', '少しずつ、新しい言葉は友達になっていった。'],
+  },
+  es: {
+    title: 'Palabras en mi cuaderno',
+    intro: ['Una tarde tranquila, Mía abrió su cuaderno y encontró la palabra "{w}".', 'ある静かな午後、ミアはノートを開いて、「{w}」という言葉を見つけた。'],
+    mid: [
+      ['Le recordó "{w}", otra palabra que había aprendido.', 'それは、前に覚えた「{w}」という言葉を思い出させた。'],
+      ['Escribió una historia corta con "{w}".', '彼女は「{w}」を使った短い物語を書いた。'],
+      ['Al día siguiente, "{w}" apareció otra vez en una canción.', '次の日、「{w}」がまた歌の中に出てきた。'],
+    ],
+    end: ['Poco a poco, sus palabras nuevas se hicieron amigas.', '少しずつ、新しい言葉は友達になっていった。'],
+  },
+  fr: {
+    title: 'Les mots de mon cahier',
+    intro: ['Un soir tranquille, Léa ouvrit son cahier et trouva le mot « {w} ».', 'ある静かな夜、レアはノートを開いて、「{w}」という言葉を見つけた。'],
+    mid: [
+      ['Cela lui rappela « {w} », un autre mot qu\'elle avait appris.', 'それは、前に覚えた「{w}」という言葉を思い出させた。'],
+      ['Elle écrivit une courte histoire avec « {w} ».', '彼女は「{w}」を使った短い物語を書いた。'],
+      ['Le lendemain, « {w} » revint dans une chanson.', '次の日、「{w}」がまた歌の中に出てきた。'],
+    ],
+    end: ['Petit à petit, ses nouveaux mots devinrent des amis.', '少しずつ、新しい言葉は友達になっていった。'],
+  },
+};
+
+// words: [{ lemma, meaning }]。返り値は generateStory と同じ形（note に使った単語を載せる）
+export async function generateStoryFromWords({ lang, level = 'beginner', words }) {
+  await new Promise((r) => setTimeout(r, 900));
+  const tpl = WORD_TEMPLATES[lang] ?? WORD_TEMPLATES.en;
+  const useLang = WORD_TEMPLATES[lang] ? lang : 'en';
+  const pairs = [];
+  const fill = (pair, w) => [pair[0].replace('{w}', w), pair[1].replace('{w}', w)];
+  words.forEach((w, i) => pairs.push(fill(i === 0 ? tpl.intro : tpl.mid[(i - 1) % tpl.mid.length], w.lemma)));
+  pairs.push(tpl.end);
+  // 3文ごとに段落を分ける
+  const paragraphs = [];
+  for (let i = 0; i < pairs.length; i += 3) paragraphs.push(pairs.slice(i, i + 3));
+  for (const [src, ja] of pairs) CORPUS.push({ lang: useLang, src, ja }); // 翻訳表示のために登録
+  return {
+    title: tpl.title,
+    text: paragraphs.map((p) => p.map((x) => x[0]).join(' ')).join('\n\n'),
+    lang: useLang,
+    genre: 'words',
+    level,
+    words: words.map((w) => w.lemma),
+    note: `単語帳の${words.length}個の単語から作りました：${words.map((w) => w.lemma).join('、')}`,
+  };
+}
+
 export async function generateStory({ lang, level, genre }) {
   await new Promise((r) => setTimeout(r, 900)); // AI生成っぽい待ち時間
 

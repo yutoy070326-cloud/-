@@ -1,28 +1,31 @@
 import React, { useMemo } from 'react';
+import { t } from '../lib/i18n.js';
 import StampCard from '../components/StampCard.jsx';
 import ToyBlock from '../components/ToyBlock.jsx';
 import { loadShelf } from '../lib/shelf.js';
+import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
 
 export default function StampScreen({ onBack }) {
+  const tut = useScreenTutorial('stamps');
   const shelf = useMemo(loadShelf, []);
   const done = Math.floor(shelf.stamps.length / 10);
   return (
     <div className="screen">
       <header className="topbar">
-        <button className="btn ghost" onClick={onBack}>← 戻る</button>
-        <h2 className="title">🎴 スタンプカード</h2>
-        <span className="topbar-spacer" />
+        <button className="btn ghost" onClick={onBack}>{t('common.back', '← 戻る')}</button>
+        <h2 className="title">{t('stamp.title', '🎴 スタンプカード')}</h2>
+        <HelpButton onClick={tut.show} />
       </header>
       <main className="content" data-testid="stamp-screen">
-        <p className="hint">はじめてログインした日と、毎週月曜日にログインした日に、スタンプが1つ押されて、積み木がもらえます。</p>
         <StampCard stamps={shelf.stamps} />
-        <p className="hint">集めたスタンプ {shelf.stamps.length}個{done > 0 ? `（カード${done}枚コンプリート！）` : ''}</p>
-        <h3 className="section-title">もらった積み木 {shelf.blocks.length}個</h3>
+        <p className="hint">{t('stamp.count', '集めたスタンプ {n}個', { n: shelf.stamps.length })}{done > 0 ? t('stamp.complete', '（カード{n}枚コンプリート！）', { n: done }) : ''}</p>
+        <h3 className="section-title">{t('stamp.blocks', 'もらった積み木 {n}個', { n: shelf.blocks.length })}</h3>
         <div className="block-grid">
-          {shelf.blocks.length === 0 && <p className="empty">まだ積み木がありません。</p>}
+          {shelf.blocks.length === 0 && <p className="empty">{t('stamp.noblocks', 'まだ積み木がありません。')}</p>}
           {shelf.blocks.map((b) => <ToyBlock key={b.id} shape={b.shape} color={b.color} size={52} />)}
         </div>
       </main>
+      {tut.node}
     </div>
   );
 }

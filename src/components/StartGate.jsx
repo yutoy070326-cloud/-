@@ -4,6 +4,7 @@ import { pickGreeting, timeOfDay } from '../lib/greetings.js';
 import { speak, speechSupported } from '../lib/speech.js';
 import { loadSettings } from '../lib/settings.js';
 import { langName } from '../lib/storyAI.js';
+import { t } from '../lib/i18n.js';
 
 // ① スタート画面：「学習を開始する」のトグルをONにすると、開始時演出が始まる
 export function StartGate({ onStart }) {
@@ -16,11 +17,11 @@ export function StartGate({ onStart }) {
   return (
     <div className="gate" data-testid="gate">
       <div className="gate-logo">Lingo Reader</div>
-      <p className="gate-lead">好きな文章が、そのまま教科書になる。</p>
-      <button type="button" role="switch" aria-checked={on} className={'gate-switch' + (on ? ' on' : '')} onClick={flip} data-testid="gate-switch" aria-label="学習を開始する">
+      <p className="gate-lead">{t('home.lead', '好きな文章が、そのまま教科書になる。')}</p>
+      <button type="button" role="switch" aria-checked={on} className={'gate-switch' + (on ? ' on' : '')} onClick={flip} data-testid="gate-switch" aria-label={t('gate.start', '学習を開始する')}>
         <span className="gate-knob" />
       </button>
-      <div className="gate-label">学習を開始する</div>
+      <div className="gate-label">{t('gate.start', '学習を開始する')}</div>
     </div>
   );
 }
@@ -40,7 +41,7 @@ function Bubble({ g }) {
       <div className="bubble-text" lang={g.lang} dir={g.lang === 'ar' ? 'rtl' : undefined}>{g.text}</div>
       {g.pron && <div className="bubble-pron">{g.pron.text}</div>}
       {g.gloss && <div className="bubble-gloss">{g.gloss}</div>}
-      <div className="bubble-lang" data-testid="greeting-lang">{langName(g.lang)}のあいさつ</div>
+      <div className="bubble-lang" data-testid="greeting-lang">{t('greet.lang', '{lang}のあいさつ', { lang: langName(g.lang) })}</div>
     </div>
   );
 }
@@ -61,7 +62,7 @@ export function IntroScene({ char, onDone }) {
       <div className="scene iris-in" onClick={finish} data-testid="intro" data-char={char}>
         <Character kind={char} />
         <Bubble g={g} />
-        <button type="button" className="scene-skip" onClick={(e) => { e.stopPropagation(); finish(); }} data-testid="intro-skip">スキップ</button>
+        <button type="button" className="scene-skip" onClick={(e) => { e.stopPropagation(); finish(); }} data-testid="intro-skip">{t('common.skip', 'スキップ')}</button>
       </div>
     </div>
   );
@@ -87,7 +88,7 @@ export function FarewellScene({ char, onDone }) {
       >
         <Character kind={char} />
         <Bubble g={g} />
-        <button type="button" className="scene-skip" onClick={(e) => { e.stopPropagation(); setClosing(true); }} data-testid="farewell-skip">スキップ</button>
+        <button type="button" className="scene-skip" onClick={(e) => { e.stopPropagation(); setClosing(true); }} data-testid="farewell-skip">{t('common.skip', 'スキップ')}</button>
       </div>
     </div>
   );

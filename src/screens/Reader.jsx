@@ -13,6 +13,7 @@ import FormTags from '../components/FormTags.jsx';
 import ConjTable from '../components/ConjTable.jsx';
 import SpeakButton from '../components/SpeakButton.jsx';
 import SpeedSwitch from '../components/SpeedSwitch.jsx';
+import { t } from '../lib/i18n.js';
 import Reading from '../components/Reading.jsx';
 import { loadAlwaysDetail, saveAlwaysDetail } from '../lib/detailPref.js';
 import { loadSettings, highlightColor, posCategory } from '../lib/settings.js';
@@ -20,6 +21,7 @@ import { translateSentences, translateSelection } from '../lib/translate.js';
 import { addToWordbook, upsertMaterial } from '../lib/storage.js';
 import TitleSheet from '../components/TitleSheet.jsx';
 import { textKey } from '../lib/folders.js';
+import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
 
 const HEADER_H = 56 + 52; // ヘッダー + 上部の操作バー（固定）
 const SELECTION_DEBOUNCE_MS = 400; // ハンドルをドラッグし終わるのを待つ時間
@@ -54,7 +56,7 @@ function tokenFromBoundary(node, offset, article, isEnd) {
   return idx;
 }
 
-export default function Reader({ session, onBack, onWordbookChanged, onMaterialsChanged }) {
+export default function Reader({ session, onBack, onWordbookChanged, onMaterialsChanged, nav, onGoto, onAddPage }) {
   const { text, lang, meta, source, level, genre } = session;
   const tokens = useMemo(() => tokenize(text, lang), [text, lang]);
 
@@ -64,6 +66,7 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
   //  word : { id, kind:'word', hid, anchorTop, anchorBottom, anchorX }（本文内に出る小窓）
   //  range: { id, kind:'range', text, result|null, card:'bottom'|'top' }（画面固定カード）
   const [popup, setPopup] = useState(null);
+  const tut = useScreenTutorial('reader');
   const settings = useMemo(loadSettings, []); // ホームの「設定」で決めた内容（色分けなど）
   const [alwaysDetail, setAlwaysDetail] = useState(loadAlwaysDetail); // 「いつも詳しく」設定
   const [openDetailId, setOpenDetailId] = useState(null); // 「詳しく見る」を開いた小窓の id
@@ -457,6 +460,13 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
     else setSheetOpen(true);
   };
 
+  // 前後の文章へ。保存していないハイライトがあるときは、確認する
+  const go = (m) => {
+    if (!m) return;
+    if (highlights.length > 0 && !window.confirm(t('nav.confirm', '保存していないハイライトがあります。移動しますか？'))) return;
+    onGoto?.(m);
+  };
+
   // ---- 描画 ----
   const renderToken = (t) => {
     if (t.type === 'break') return <br key={t.i} data-t={t.i} />;
@@ -520,7 +530,7 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
             {showTrans ? '🌐 日本語訳を隠す' : '🌐 日本語訳を表示'}
           </button>
         </div>
-        <div className="speed-row">🔊 <SpeedSwitch /></div>
+        <div className="speed-row">🔊 <SpeedSwitch /> <HelpButton onClick={tut.show} /></div>
 
         <p className="reader-tip">
           タップ：単語の意味＋ハイライト（再タップで解除） ／ 長押し・ドラッグ：選んだ文やフレーズを翻訳
@@ -690,6 +700,18 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
           {toast}
         </div>
       )}
+      {nav && (nav.prev || nav.next || nav.isBook) && (
+        <nav className="reader-nav" data-testid="reader-nav" aria-label={nav.kind === 'page' ? t('nav.pages', 'ページの移動') : t('nav.texts', '文章の移動')}>
+          <button className="btn reader-nav-btn" disabled={!nav.prev} onClick={() => go(nav.prev)} data-testid="nav-prev"
+            aria-label={nav.kind === 'page' ? t('nav.prevpage', '前のページ') : t('nav.prevtext', '前の文章')}>‹</button>
+          <span className="reader-nav-label" data-testid="nav-label">
+            {nav.kind === 'page' ? t('nav.pageof', '{i} / {n} ページ', { i: nav.index, n: nav.total }) : t('nav.textof', '{i} / {n} 件目', { i: nav.index, n: nav.total })}
+          </span>
+          <button className="btn reader-nav-btn" disabled={!nav.next && !nav.isBook} onClick={() => (nav.next ? go(nav.next) : onAddPage?.())} data-testid="nav-next"
+            aria-label={nav.kind === 'page' ? (nav.next ? t('nav.nextpage', '次のページ') : t('nav.addpage', '次のページを登録')) : t('nav.nexttext', '次の文章')}>›</button>
+        </nav>
+      )}
+      {tut.node}
     </div>
   );
 }

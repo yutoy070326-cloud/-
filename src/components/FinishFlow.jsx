@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Hanamaru from './Hanamaru.jsx';
 import { FarewellScene } from './StartGate.jsx';
+import { medalName, medalDesc } from '../lib/diary.js';
+import { t, uiLocale } from '../lib/i18n.js';
 
 const LINE_STEP = 1900; // 1行ごとの間隔（ms）：筆で花丸を描く時間ぶん
 const LINE_START = 1300; // ノートが止まってから最初の行が出るまで（ms）
@@ -36,7 +38,7 @@ export function Medal({ medal, big = false, locked = false }) {
         {look.includes('deco') && !locked && <span className="medal-sparkle" aria-hidden="true">✦</span>}
         <span className="medal-emoji">{locked ? '？' : medal.emoji}</span>
       </div>
-      <div className="medal-title">{locked ? '？？？' : medal.title}</div>
+      <div className="medal-title">{locked ? '？？？' : medalName(medal)}</div>
     </div>
   );
 }
@@ -76,10 +78,10 @@ export default function FinishFlow({ lines, medals, farewellChar, onSaveExtras, 
       <div className="finish medal-stage" data-testid="medal-stage">
         <Confetti />
         <div className="medal-card">
-          <h2>🎉 記念メダルを獲得！</h2>
+          <h2>{t('finish.medal.title', '🎉 記念メダルを獲得！')}</h2>
           <div className="medal-row">{medals.map((m) => <Medal key={m.id} medal={m} big />)}</div>
-          {medals.map((m) => <p key={m.id} className="medal-desc">{m.desc}</p>)}
-          <button className="btn primary block" onClick={() => setStage('bye')} data-testid="medal-next">つづける</button>
+          {medals.map((m) => <p key={m.id} className="medal-desc">{medalDesc(m)}</p>)}
+          <button className="btn primary block" onClick={() => setStage('bye')} data-testid="medal-next">{t('common.continue', 'つづける')}</button>
         </div>
       </div>
     );
@@ -90,8 +92,9 @@ export default function FinishFlow({ lines, medals, farewellChar, onSaveExtras, 
       <div className="notebook" data-testid="notebook">
         <div className="notebook-rings" aria-hidden="true">{Array.from({ length: 9 }, (_, i) => <span key={i} />)}</div>
         <div className="notebook-paper">
-          <h2 className="notebook-title">きょうの達成ノート</h2>
-          <div className="notebook-date">{new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}</div>
+          <h2 className="notebook-title">{t('finish.notebook', 'きょうの達成ノート')}</h2>
+          <div className="notebook-date">{new Date().toLocaleDateString(uiLocale(), { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}</div>
+          {lines.length === 0 && <p className="note-none" data-testid="note-none">{t('finish.nonew', 'きょうの達成は、すでにノートに書いてあります。ほかに達成したことを書いてみよう！')}</p>}
           <ul className="notebook-lines">
             {lines.map((l, i) => (
               <li key={i} className="note-line" style={{ '--d': `${LINE_START + i * LINE_STEP}ms` }} data-testid="note-line">
@@ -109,20 +112,20 @@ export default function FinishFlow({ lines, medals, farewellChar, onSaveExtras, 
 
           {ready && (
             <div className="own-box" data-testid="own-box">
-              <label className="own-label" htmlFor="own-input">✏️ 自分で書く「達成したこと」</label>
+              <label className="own-label" htmlFor="own-input">{t('finish.own', '✏️ 自分で書く「達成したこと」')}</label>
               <div className="own-row">
-                <input id="own-input" className="input" value={draft} maxLength={60} placeholder="例：映画を字幕なしで10分見た"
+                <input id="own-input" className="input" value={draft} maxLength={60} placeholder={t('finish.own.ph', '例：映画を字幕なしで10分見た')}
                   onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addOwn()} data-testid="own-input" />
-                <button type="button" className="btn primary" onClick={addOwn} data-testid="own-add">登録</button>
+                <button type="button" className="btn primary" onClick={addOwn} data-testid="own-add">{t('common.register', '登録')}</button>
               </div>
-              <label className="own-label" htmlFor="diary-input">📔 一言日記</label>
-              <input id="diary-input" className="input" value={diary} maxLength={80} placeholder="今日の一言"
+              <label className="own-label" htmlFor="diary-input">{t('finish.diary', '📔 一言日記')}</label>
+              <input id="diary-input" className="input" value={diary} maxLength={80} placeholder={t('finish.diary.ph', '今日の一言')}
                 onChange={(e) => setDiary(e.target.value)} data-testid="diary-input" />
             </div>
           )}
         </div>
         <button className={'btn primary notebook-next' + (ready ? ' show' : '')} disabled={!ready} onClick={next} data-testid="notebook-next">
-          {medals.length > 0 ? 'メダルを見る' : 'つぎへ'}
+          {medals.length > 0 ? t('finish.seemedal', 'メダルを見る') : t('common.next', 'つぎへ')}
         </button>
       </div>
     </div>

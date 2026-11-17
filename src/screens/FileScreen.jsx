@@ -3,11 +3,13 @@ import { loadMaterials, loadFiles, removeMaterial, updateMaterial, renameFile, r
 import TextEditSheet from '../components/TextEditSheet.jsx';
 import { langName } from '../lib/storyAI.js';
 import TitleSheet from '../components/TitleSheet.jsx';
+import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
 
 const KIND_LABEL = { article: '記事', lyrics: '歌詞', exam: '長文問題', ai: 'AI物語', other: 'ファイル' };
 
 // ライブラリのファイルを開いたときの画面：中に入っている文章を選んで学習する
 export default function FileScreen({ fileId, onBack, onOpen, onChanged }) {
+  const tut = useScreenTutorial('file');
   const [file, setFile] = useState(() => loadFiles().find((f) => f.id === fileId));
   const [list, setList] = useState(() => loadMaterials().filter((m) => m.fileId === fileId));
   const [renaming, setRenaming] = useState(null); // material
@@ -81,7 +83,7 @@ export default function FileScreen({ fileId, onBack, onOpen, onChanged }) {
       <header className="topbar">
         <button className="btn ghost" onClick={onBack} aria-label="戻る">← 戻る</button>
         <h2 className="title" data-testid="file-title">📁 {file.name}</h2>
-        <span className="topbar-spacer" />
+        <HelpButton onClick={tut.show} />
       </header>
 
       {/* 言語タブ（単語帳と同じ） */}
@@ -152,6 +154,7 @@ export default function FileScreen({ fileId, onBack, onOpen, onChanged }) {
         <TitleSheet heading="ファイル名を変更" initial={file.name} confirmLabel="変更する" error={fileError}
           onSave={doRenameFile} onClose={() => { setRenameFileOpen(false); setFileError(''); }} />
       )}
+      {tut.node}
     </div>
   );
 }

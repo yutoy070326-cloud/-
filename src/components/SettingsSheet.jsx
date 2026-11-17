@@ -1,24 +1,35 @@
 import React, { useState } from 'react';
 import SpeedSwitch from './SpeedSwitch.jsx';
+import { t, UI_LANGS, getUiLang } from '../lib/i18n.js';
 import {
   POS_CATEGORIES, DEFAULT_COLORS, COLOR_CHOICES, loadSettings, saveSettings,
 } from '../lib/settings.js';
 
 // ホームの「設定」。変更はすぐに保存される（このシートを閉じたあとに開く文章から反映）
-export default function SettingsSheet({ onClose }) {
+export default function SettingsSheet({ onClose, onChangeLang }) {
   const [st, setSt] = useState(loadSettings);
   const update = (patch) => setSt(saveSettings(patch));
   const setColor = (id, color) => update({ colors: { ...st.colors, [id]: color } });
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet settings-sheet" role="dialog" aria-label="設定" onClick={(e) => e.stopPropagation()} data-testid="settings-sheet">
-        <h3 className="sheet-title">⚙ 設定</h3>
+      <div className="sheet settings-sheet" role="dialog" aria-label={t('home.settings', '設定')} onClick={(e) => e.stopPropagation()} data-testid="settings-sheet">
+        <h3 className="sheet-title">{t('settings.title', '⚙ 設定')}</h3>
 
         <section className="set-section">
-          <h4 className="set-h">単語のハイライト</h4>
+          <h4 className="set-h">{t('settings.language', '表示言語 / Language')}</h4>
           <label className="set-row">
-            <span>品詞で色分けする</span>
+            <span>{t('settings.uilang', '画面の言語')}</span>
+            <select className="input" style={{ width: 'auto' }} value={getUiLang()} onChange={(e) => onChangeLang?.(e.target.value)} data-testid="set-ui-lang">
+              {UI_LANGS.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
+            </select>
+          </label>
+        </section>
+
+        <section className="set-section">
+          <h4 className="set-h">{t('settings.highlight', '単語のハイライト')}</h4>
+          <label className="set-row">
+            <span>{t('settings.colorbypos', '品詞で色分けする')}</span>
             <input type="checkbox" checked={st.colorByPos} onChange={(e) => update({ colorByPos: e.target.checked })} data-testid="set-color-by-pos" />
           </label>
 
@@ -51,39 +62,39 @@ export default function SettingsSheet({ onClose }) {
                 </div>
               ))}
               <button type="button" className="btn ghost small" onClick={() => update({ colors: DEFAULT_COLORS })} data-testid="set-colors-reset">
-                色を初期設定に戻す
+                {t('settings.colorreset', '色を初期設定に戻す')}
               </button>
             </div>
           )}
         </section>
 
         <section className="set-section">
-          <h4 className="set-h">意味の小窓・単語テスト</h4>
+          <h4 className="set-h">{t('settings.popup', '意味の小窓・単語テスト')}</h4>
           <label className="set-row">
-            <span>読み（拼音・ローマ字）を表示する</span>
+            <span>{t('settings.reading', '読み（拼音・ローマ字）を表示する')}</span>
             <input type="checkbox" checked={st.showReading} onChange={(e) => update({ showReading: e.target.checked })} data-testid="set-show-reading" />
           </label>
           <label className="set-row">
-            <span>「詳しく見る」を最初から開く</span>
+            <span>{t('settings.alwaysdetail', '「詳しく見る」を最初から開く')}</span>
             <input type="checkbox" checked={st.alwaysDetail} onChange={(e) => update({ alwaysDetail: e.target.checked })} data-testid="set-always-detail" />
           </label>
         </section>
 
         <section className="set-section">
-          <h4 className="set-h">音声の速さ</h4>
-          <div className="set-row"><span>🐢 ゆっくり ／ 🧑 ふつう ／ 🐇 はやい</span><SpeedSwitch /></div>
+          <h4 className="set-h">{t('settings.speed', '音声の速さ')}</h4>
+          <div className="set-row"><span>{t('settings.speed.row', '🐢 ゆっくり ／ 🧑 ふつう ／ 🐇 はやい')}</span><SpeedSwitch /></div>
         </section>
 
         <section className="set-section">
-          <h4 className="set-h">開始・終了のあいさつ</h4>
+          <h4 className="set-h">{t('settings.greet', '開始・終了のあいさつ')}</h4>
           <label className="set-row">
-            <span>あいさつの声を出さない（テキストのみ）</span>
+            <span>{t('settings.mute', 'あいさつの声を出さない（テキストのみ）')}</span>
             <input type="checkbox" checked={st.muteGreeting} onChange={(e) => update({ muteGreeting: e.target.checked })} data-testid="set-mute-greeting" />
           </label>
         </section>
 
         <div className="sheet-actions">
-          <button className="btn primary" onClick={onClose}>閉じる</button>
+          <button className="btn primary" onClick={onClose}>{t('common.close', '閉じる')}</button>
         </div>
       </div>
     </div>

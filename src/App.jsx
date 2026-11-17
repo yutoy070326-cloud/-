@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import NotifySettings from './components/NotifySettings.jsx';
 import SettingsSheet from './components/SettingsSheet.jsx';
+import { getUiLang, setUiLang, t } from './lib/i18n.js';
 import { checkAndNotify, registerServiceWorker, scheduleDailyTrigger } from './lib/notify.js';
 import Home from './screens/Home.jsx';
 import Reader from './screens/Reader.jsx';
@@ -19,7 +20,7 @@ import MedalAlbum from './screens/MedalAlbum.jsx';
 import StampScreen from './screens/StampScreen.jsx';
 import LoginBonus from './components/LoginBonus.jsx';
 import { claimLoginBonus } from './lib/shelf.js';
-import { startSession, loadSession, clearSession, oppositeChar, computeSummary, buildLines, newMedals, saveFinish, updateNote } from './lib/diary.js';
+import { startSession, loadSession, clearSession, oppositeChar, computeSummary, buildLines, newMedals, saveFinish, updateNote, todayLineTexts } from './lib/diary.js';
 import { shouldShowTutorial } from './lib/tutorial.js';
 import { loadWordbook, loadMaterials, loadBooks, loadFiles, migrateLibrary, touchMaterial } from './lib/storage.js';
 import { requestPersistentStorage } from './lib/backup.js';
@@ -47,6 +48,8 @@ export default function App() {
   const showTutorial = () => setTutorial('again');
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [uiLang, setUiLangState] = useState(getUiLang); // 画面の表示言語（変えると、画面全体が作り直されて切り替わる）
+  const changeLang = (code) => { setUiLang(code); setUiLangState(code); };
 
   // スタート画面 → 開始演出 → アプリ → （学習を終える）→ 達成ノート・お見送り → スタート画面
   const [phase, setPhase] = useState('gate'); // 'gate' | 'intro' | 'app' | 'finish'
@@ -70,7 +73,7 @@ export default function App() {
   const endStudy = () => {
     const s = loadSession() ?? { startedAt: new Date().setHours(0, 0, 0, 0), char: char ?? 'boy' };
     const sum = computeSummary(s.startedAt);
-    const lines = buildLines(sum);
+    const lines = buildLines(sum, todayLineTexts()); // 同じ日にすでに書いた行は、くり返さない
     const medals = newMedals(sum);
     const noteId = saveFinish(lines, medals); // 押した時点で保存（演出の途中で閉じても残る）
     setFinish({ noteId, lines, medals, farewellChar: oppositeChar(s.char) }); // 開始時と反対のキャラクターでお見送り
@@ -102,6 +105,31 @@ export default function App() {
     };
   }, []);
 
+  // 文章（本のページ／ファイルの中の文章）を、前後の文章へ移るための情報
+  const sessionOfMaterial = (m, extra = {}) => {
+    const book = m.bookId ? loadBooks().find((b) => b.id === m.bookId) : null;
+    if (book) {
+      return { title: m.title, text: m.text, lang: book.lang, meta: null, source: 'paste', materialId: m.id, kind: 'book', bookId: book.id, sourceKey: book.id, sourceTitle: book.title };
+    }
+    return { title: m.title, text: m.text, lang: m.lang, meta: null, source: m.source, level: m.level, genre: m.genre, materialId: m.id, kind: m.kind, fromFile: m.fileId ?? extra.fromFile };
+  };
+  const navFor = (sess) => {
+    const mats = loadMaterials();
+    const cur = sess?.materialId ? mats.find((m) => m.id === sess.materialId) : null;
+    if (!cur) return null;
+    let list;
+    let kind;
+    if (cur.bookId) {
+      list = mats.filter((m) => m.bookId === cur.bookId).sort((a, b) => (a.page ?? 0) - (b.page ?? 0));
+      kind = 'page';
+    } else if (cur.fileId) {
+      list = mats.filter((m) => m.fileId === cur.fileId);
+      kind = 'text';
+    } else return null;
+    const i = list.findIndex((m) => m.id === cur.id);
+    return { kind, prev: i > 0 ? list[i - 1] : null, next: i >= 0 && i < list.length - 1 ? list[i + 1] : null, index: i + 1, total: list.length, isBook: !!cur.bookId };
+  };
+
   const startReading = useCallback((s) => {
     if (s.materialId) touchMaterial(s.materialId); // 「最後に学習した日」を更新
     setSession({ ...s, id: Date.now() });
@@ -109,7 +137,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="app">
+    <div className="app" key={uiLang}>
       {screen === 'home' && (
         <Home
           wordCount={wordCount}
@@ -157,6 +185,14 @@ export default function App() {
           }}
           onWordbookChanged={(n) => setWordCount(n)}
           onMaterialsChanged={refreshShelf}
+          nav={navFor(session)}
+          onGoto={(m) => startReading(sessionOfMaterial(m, { fromFile: session.fromFile }))}
+          onAddPage={() => {
+            if (session.bookId) {
+              setBookId(session.bookId);
+              setScreen('book');
+            }
+          }}
         />
       )}
       {screen === 'file' && (
@@ -263,12 +299,12 @@ export default function App() {
         />
       )}
       {notifyOpen && <NotifySettings onClose={() => setNotifyOpen(false)} />}
-      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} onChangeLang={changeLang} />}
       {screen === 'notes' && <NotesScreen onBack={() => setScreen('home')} />}
       {screen === 'medals' && <MedalAlbum onBack={() => setScreen('home')} />}
       {screen === 'stamps' && <StampScreen onBack={() => setScreen('home')} />}
       {phase === 'app' && screen !== 'home' && trail.length >= 2 && (
-        <button className="home-fab" onClick={() => setScreen('home')} aria-label="ホームに戻る" data-testid="home-fab">🏠</button>
+        <button className="home-fab" onClick={() => setScreen('home')} aria-label={t('common.home', 'ホームに戻る')} data-testid="home-fab">🏠</button>
       )}
       {phase === 'app' && bonus && <LoginBonus bonus={bonus} onClose={() => setBonus(null)} />}
       {phase === 'gate' && <StartGate onStart={begin} />}

@@ -12,6 +12,8 @@
 - 達成ノート・メダルは `lingo-reader:notes:v1` / `lingo-reader:medals:v1`、山の並び順・積み木・スタンプは `lingo-reader:shelf:v1`（いずれもバックアップ対象。`src/lib/diary.js` `src/lib/shelf.js`）
 - Playwright でログインボーナスのモーダル（`login-bonus` / `bonus-close`）が起動時に出ることがある
 - 起動時はスタート画面（トグル）→開始演出。「学習を終える」で達成ノート→メダル→お見送り。Playwright で確認するときは `gate-switch` をクリックし `intro-skip` で進める
+- 多言語対応: `t('key', '日本語の文言', {params})`（`src/lib/i18n.js`）。日本語はソースの文言、英語などは `src/locales/<言語>.js`。言語を足すときは locales にファイルを作り i18n.js に登録。いま英語化済みは、ホーム・設定・ライブラリ・ノート・メダル・スタンプ・各画面の使い方・前後移動。単語帳・復習・リーダー・登録フォーム等の本文は日本語のまま（順次 t() 化）
+- 画面ごとの使い方は `src/lib/tutorials.js`（初回は必ず表示、`lingo-reader-tutorial-seen:v1`）
 - 復習ロジックは `src/lib/srs.js` に集約（間隔 20分/1時間/1日/1週間/1か月、step5 で習得）
 - 辞書・翻訳・AI物語は現状モック（`dictionary.js` `translate.js` `storyAI.js`）。実APIに差し替える場合も関数の形を維持
 - 本物のWebプッシュは未実装（サーバー＋VAPID が必要）。現状は Service Worker の showNotification

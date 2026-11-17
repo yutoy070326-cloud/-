@@ -5,11 +5,13 @@ import { PASTE_LANGUAGES } from '../lib/storyAI.js';
 import PagePaper from '../components/PagePaper.jsx';
 import { detectLanguage, inputHints } from '../lib/langDetect.js';
 import { langName } from '../lib/storyAI.js';
+import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
 
 const reduced = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 // 新しい本の登録。白紙の本が開く → 詳細設定（見開き）→ ページがめくれて1ページ目 → 本文を貼り付け
 export default function BookSetup({ onBack, onRead, onBooksChanged, onMaterialsChanged }) {
+  const tut = useScreenTutorial('bookNew');
   const [phase, setPhase] = useState('closed'); // closed → opening → form → flipping → page
   const [title, setTitle] = useState('');
   const [lang, setLang] = useState('en');
@@ -90,7 +92,7 @@ export default function BookSetup({ onBack, onRead, onBooksChanged, onMaterialsC
       <header className="topbar">
         <button className="btn ghost" onClick={onBack} aria-label="戻る">← 戻る</button>
         <h2 className="title">新しい本</h2>
-        <span className="topbar-spacer" />
+        <HelpButton onClick={tut.show} />
       </header>
 
       <main className="content" data-phase={phase} data-testid="book-setup">
@@ -150,6 +152,7 @@ export default function BookSetup({ onBack, onRead, onBooksChanged, onMaterialsC
           </div>
         )}
       </main>
+      {tut.node}
     </div>
   );
 }

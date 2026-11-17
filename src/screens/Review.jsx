@@ -13,6 +13,7 @@ import SpeedSwitch from '../components/SpeedSwitch.jsx';
 import Reading from '../components/Reading.jsx';
 import { loadAlwaysDetail, saveAlwaysDetail } from '../lib/detailPref.js';
 import { loadSettings } from '../lib/settings.js';
+import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
 
 // 例文の中の学習対象の語を目立たせる
 function Context({ context, text }) {
@@ -39,6 +40,7 @@ export default function Review({ filter, onExit }) {
     if (filter.scope === 'due') return pool.filter((w) => isDue(w, now)).sort(byDue);
     return [...pool.filter((w) => isDue(w, now)).sort(byDue), ...pool.filter((w) => !isDue(w, now)).sort(byDue)];
   });
+  const tut = useScreenTutorial('review');
   const [i, setI] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [stats, setStats] = useState({ ok: 0, ng: 0, mastered: 0 });
@@ -98,6 +100,7 @@ export default function Review({ filter, onExit }) {
         </button>
         <h2 className="title">{filter.scope === 'due' ? '単語の復習' : '単語テスト'}</h2>
         <SpeedSwitch className="in-topbar" />
+        <HelpButton onClick={tut.show} />
       </header>
 
       <main className="content review">
@@ -223,6 +226,7 @@ export default function Review({ filter, onExit }) {
           </section>
         )}
       </main>
+      {tut.node}
     </div>
   );
 }

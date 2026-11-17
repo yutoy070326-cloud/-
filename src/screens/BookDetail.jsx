@@ -4,9 +4,11 @@ import { langName } from '../lib/storyAI.js';
 import PagePaper from '../components/PagePaper.jsx';
 import TextEditSheet from '../components/TextEditSheet.jsx';
 import { updateMaterial, removeMaterial } from '../lib/storage.js';
+import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
 
 // 1冊の本：進捗・今日の目標・次のページの登録・登録済みページ一覧
 export default function BookDetail({ bookId, onBack, onRead, onBooksChanged, onMaterialsChanged }) {
+  const tut = useScreenTutorial('book');
   const [book, setBook] = useState(() => loadBooks().find((b) => b.id === bookId));
   const [materials, setMaterials] = useState(() => loadMaterials());
   const [page, setPage] = useState(() => (book ? nextPageNumber(book) : 1));
@@ -74,7 +76,7 @@ export default function BookDetail({ bookId, onBack, onRead, onBooksChanged, onM
       <header className="topbar">
         <button className="btn ghost" onClick={onBack} aria-label="戻る">← 戻る</button>
         <h2 className="title">{book.title}</h2>
-        <span className="topbar-spacer" />
+        <HelpButton onClick={tut.show} />
       </header>
       <main className="content" data-testid="book-detail">
         <section className="book-card">
@@ -163,6 +165,7 @@ export default function BookDetail({ bookId, onBack, onRead, onBooksChanged, onM
           }}
         />
       )}
+      {tut.node}
     </div>
   );
 }

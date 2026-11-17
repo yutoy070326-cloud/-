@@ -20,6 +20,7 @@ import { useNow } from '../lib/useNow.js';
 import StepBadge from '../components/StepBadge.jsx';
 import WordForm from '../components/WordForm.jsx';
 import FolderManager from '../components/FolderManager.jsx';
+import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
 
 export default function Wordbook({ onBack, onChanged, initial = {}, onStartReview }) {
   const now = useNow();
@@ -28,6 +29,7 @@ export default function Wordbook({ onBack, onChanged, initial = {}, onStartRevie
   const [books] = useState(() => loadBooks());
   const [customFolders, setCustomFolders] = useState(() => loadFolders());
   const [manager, setManager] = useState(false);
+  const tut = useScreenTutorial('wordbook');
   const [view, setView] = useState(initial.view ?? 'list'); // 'list'（単語帳） | 'review'（復習）
   const [tab, setTab] = useState(initial.lang ?? 'all'); // 'all' | 言語コード
   const [source, setSource] = useState(initial.source ?? 'all'); // 'all' | 文章フォルダーのキー
@@ -134,7 +136,7 @@ export default function Wordbook({ onBack, onChanged, initial = {}, onStartRevie
           ← 戻る
         </button>
         <h2 className="title">単語帳</h2>
-        <span className="topbar-spacer" />
+        <HelpButton onClick={tut.show} />
       </header>
 
       {/* 単語帳 / 復習 */}
@@ -387,6 +389,7 @@ export default function Wordbook({ onBack, onChanged, initial = {}, onStartRevie
           onClose={() => setManager(false)}
         />
       )}
+      {tut.node}
     </div>
   );
 }

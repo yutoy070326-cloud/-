@@ -8,6 +8,8 @@ import TitleSheet from '../components/TitleSheet.jsx';
 import ToyBlock from '../components/ToyBlock.jsx';
 import { langName } from '../lib/storyAI.js';
 import { bookColor } from '../lib/bookStyle.js';
+import { t } from '../lib/i18n.js';
+import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
 
 const KIND_ICON = { article: '📰', lyrics: '🎵', exam: '📝', ai: '✨', other: '📁' };
 const KIND_TAB = { article: '記事', lyrics: '歌詞', exam: '長文問題', ai: 'AI物語', other: 'その他' };
@@ -31,7 +33,7 @@ const spineSize = (pages) => ({
 });
 
 const GAP = 2; // 山のブロック同士のすきま（px）
-const BLOCK_H = 54; // 積み木の台の高さ
+const BLOCK_H = 34; // 積み木の台の高さ（小さめ）
 const PER_ROW = 7; // 本棚の1段に並べる本の数
 
 // ---- 並び順（自動）----
@@ -78,7 +80,8 @@ const LONG_PRESS_MS = 500;
 const MOVE_TOL = 10;
 const DRAG_START = 8;
 
-export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChanged, onShowTutorial }) {
+export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChanged }) {
+  const tut = useScreenTutorial('library');
   const [picker, setPicker] = useState(false);
   const [rev, setRev] = useState(0);
   const [tab, setTab] = useState('all'); // 'all' | 'book' | ファイルの種類
@@ -89,7 +92,7 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
   const [tray, setTray] = useState(false); // 積み木の持ち物
   const [stamped, setStamped] = useState(() => new Set()); // ⭐スタンプを押している本
   const [drag, setDrag] = useState(null); // { id, pile, dy }
-  const press = useRef({ t: null, fired: false, x: 0, y: 0, dragging: false, startY: 0, id: null, pile: null });
+  const press = useRef({ t: null, fired: false, x: 0, y: 0, dragging: false, down: false, type: '', startY: 0, id: null, pile: null });
   const nodes = useRef({}); // 山のブロックの DOM
   const shelfNodes = useRef({}); // 本棚の本の DOM
   const ordRef = useRef({ books: [], files: [] }); // いまの並び（ドラッグ中に更新する）
@@ -132,9 +135,9 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
 
   // ---- タブ ----
   const tabs = [
-    { id: 'all', label: 'すべて', n: data.books.length + data.files.length },
-    ...(data.books.length ? [{ id: 'book', label: '本', n: data.books.length }] : []),
-    ...KIND_ORDER.filter((k) => data.fileItems.some((i) => i.file.kind === k)).map((k) => ({ id: k, label: KIND_TAB[k], n: data.fileItems.filter((i) => i.file.kind === k).length })),
+    { id: 'all', label: t('lib.tab.all', 'すべて'), n: data.books.length + data.files.length },
+    ...(data.books.length ? [{ id: 'book', label: t('lib.tab.book', '本'), n: data.books.length }] : []),
+    ...KIND_ORDER.filter((k) => data.fileItems.some((i) => i.file.kind === k)).map((k) => ({ id: k, label: t(`lib.kind.${k}`, KIND_TAB[k]), n: data.fileItems.filter((i) => i.file.kind === k).length })),
   ];
   const active = tabs.some((t) => t.id === tab) ? tab : 'all';
   const showBooks = active === 'all' || active === 'book';
@@ -173,6 +176,7 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
   handlers.current.move = (e) => {
     const p = press.current;
     if (!p.dragging) return;
+    if (e.pointerType === 'mouse' && e.buttons === 0) { handlers.current.up(true); return; } // ボタンを離したのに、離した合図が来なかったとき
     const { id, pile } = p;
     let off = e.clientY - p.startY;
     const ids = ordRef.current[pile];
@@ -200,6 +204,8 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
     window.removeEventListener('pointermove', p.mv);
     window.removeEventListener('pointerup', p.up);
     window.removeEventListener('pointercancel', p.cancel);
+    window.removeEventListener('blur', p.cancel);
+    p.down = false;
     if (!p.dragging) return;
     p.dragging = false;
     if (commit) {
@@ -213,7 +219,7 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
   const startDrag = (e, id, pile) => {
     const p = press.current;
     window.clearTimeout(p.t);
-    p.fired = true; p.dragging = true; p.startY = e.clientY; p.id = id; p.pile = pile;
+    p.fired = true; p.dragging = true; p.down = true; p.startY = e.clientY; p.id = id; p.pile = pile;
     ordRef.current = { books: [...data.order.books], files: [...data.order.files] };
     p.mv = (ev) => handlers.current.move(ev);
     p.up = () => handlers.current.up(true);
@@ -221,32 +227,42 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
     window.addEventListener('pointermove', p.mv);
     window.addEventListener('pointerup', p.up);
     window.addEventListener('pointercancel', p.cancel);
+    window.addEventListener('blur', p.cancel);
     setDrag({ id, pile, dy: 0 });
   };
   useEffect(() => () => handlers.current.up(false), []);
 
+  // ・マウス：左ボタンを押したまま上下に動かすとドラッグ。長押しメニューは使わず、右クリックで編集・削除。
+  // ・タッチ／ペン：持ったまま上下に動かすとドラッグ。動かさずに長押しすると編集・削除。
+  // ・ボタンを押していない間にカーソルが触れただけでは、何も起きない
   const bind = (type, id, pile, open) => ({
     onPointerDown: (e) => {
       const p = press.current;
-      p.fired = false; p.x = e.clientX; p.y = e.clientY;
+      p.fired = false;
+      p.down = e.pointerType !== 'mouse' || e.button === 0; // マウスは左ボタンだけ
+      p.type = e.pointerType; p.x = e.clientX; p.y = e.clientY;
       window.clearTimeout(p.t);
-      p.t = window.setTimeout(() => {
-        p.fired = true;
-        navigator.vibrate?.(15);
-        setMenu({ type, id });
-      }, LONG_PRESS_MS);
+      if (p.down && e.pointerType !== 'mouse') {
+        p.t = window.setTimeout(() => {
+          p.fired = true;
+          navigator.vibrate?.(15);
+          setMenu({ type, id });
+        }, LONG_PRESS_MS);
+      }
     },
     onPointerMove: (e) => {
       const p = press.current;
-      if (p.dragging) return;
+      if (!p.down || p.dragging) return;
+      if (e.pointerType === 'mouse' && e.buttons === 0) { p.down = false; return; } // 押していない
       const dx = e.clientX - p.x;
       const dy = e.clientY - p.y;
       if (canDrag(pile) && Math.abs(dy) > DRAG_START && Math.abs(dy) > Math.abs(dx)) startDrag(e, id, pile); // 持ったまま上下に動かした
       else if (Math.hypot(dx, dy) > MOVE_TOL) window.clearTimeout(p.t);
     },
-    onPointerUp: () => window.clearTimeout(press.current.t),
-    onPointerCancel: () => window.clearTimeout(press.current.t),
-    onPointerLeave: () => { if (!press.current.dragging) window.clearTimeout(press.current.t); },
+    onPointerUp: () => { press.current.down = false; window.clearTimeout(press.current.t); },
+    onPointerCancel: () => { press.current.down = false; window.clearTimeout(press.current.t); },
+    onPointerLeave: () => { if (!press.current.dragging) { press.current.down = false; window.clearTimeout(press.current.t); } },
+    onDragStart: (e) => e.preventDefault(),
     onContextMenu: (e) => {
       e.preventDefault();
       window.clearTimeout(press.current.t);
@@ -373,20 +389,20 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
   return (
     <div className="screen">
       <header className="topbar">
-        <button className="btn ghost" onClick={onBack} aria-label="戻る">← 戻る</button>
-        <h2 className="title">ライブラリ</h2>
-        <button className="btn ghost" onClick={onShowTutorial} data-testid="show-tutorial-library" aria-label="使い方を見る">使い方</button>
+        <button className="btn ghost" onClick={onBack} aria-label={t('common.back', '← 戻る')}>{t('common.back', '← 戻る')}</button>
+        <h2 className="title">{t('home.library', 'ライブラリ')}</h2>
+        <button className="btn ghost" onClick={tut.show} data-testid="show-tutorial-library" aria-label={t('common.help', '使い方')}>{t('common.help', '使い方')}</button>
       </header>
       <main className="content library-main" data-testid="library">
         <section className="lib-stats four" data-testid="lib-stats">
-          <div className="stat"><b data-testid="stat-books">{data.books.length}</b><span>本</span></div>
-          <div className="stat"><b data-testid="stat-files">{data.files.length}</b><span>ファイル</span></div>
-          <div className="stat"><b data-testid="stat-finished">{data.stats.finished}</b><span>読み終えた本</span></div>
-          <div className="stat"><b data-testid="stat-pages">{data.stats.pages}</b><span>学んだページ</span></div>
+          <div className="stat"><b data-testid="stat-books">{data.books.length}</b><span>{t('lib.stat.books', '本')}</span></div>
+          <div className="stat"><b data-testid="stat-files">{data.files.length}</b><span>{t('lib.stat.files', 'ファイル')}</span></div>
+          <div className="stat"><b data-testid="stat-finished">{data.stats.finished}</b><span>{t('lib.stat.finished', '読み終えた本')}</span></div>
+          <div className="stat"><b data-testid="stat-pages">{data.stats.pages}</b><span>{t('lib.stat.pages', '学んだページ')}</span></div>
         </section>
 
         {/* 種類のタブ（単語帳の言語タブと同じ） */}
-        <nav className="tabs lib-tabs" role="tablist" aria-label="種類" data-testid="lib-tabs">
+        <nav className="tabs lib-tabs" role="tablist" aria-label={t('lib.kind', '種類')} data-testid="lib-tabs">
           {tabs.map((t) => (
             <button key={t.id} role="tab" aria-selected={active === t.id} className={'tab' + (active === t.id ? ' on' : '')} onClick={() => pickTab(t.id)} data-testid={`lib-tab-${t.id}`}>
               {t.label} <span className="tab-count">{t.n}</span>
@@ -395,32 +411,32 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
         </nav>
 
         <div className="lib-tools">
-          <label className="sort-label" htmlFor="lib-sort">並び順</label>
+          <label className="sort-label" htmlFor="lib-sort">{t('lib.sort', '並び順')}</label>
           <select id="lib-sort" className="input sort-select" value={sortMode} onChange={(e) => applySort(e.target.value)} data-testid="lib-sort">
-            {SORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+            {SORTS.map((s) => <option key={s.id} value={s.id}>{t(`lib.sort.${s.id}`, s.label)}</option>)}
           </select>
-          <button className="btn small tray-btn" onClick={() => setTray(true)} data-testid="open-tray">🧱 積み木 {heldBlocks.length}</button>
+          <button className="btn small tray-btn" onClick={() => setTray(true)} data-testid="open-tray">{t('lib.tray.btn', '🧱 積み木 {n}', { n: heldBlocks.length })}</button>
         </div>
 
         <div className="stack" data-testid="shelf" key={`${active}-${drop}`}>
           {empty && data.blockItems.length === 0 ? (
-            <p className="shelf-empty">まだ何もありません。<br />右下の「＋」から、本や記事を追加しましょう。</p>
+            <p className="shelf-empty">{t('lib.empty', 'まだ何もありません。右下の「＋」から、本や記事を追加しましょう。')}</p>
           ) : (
             <div className={'piles' + (showBooks && showFiles ? ' two' : '')}>
               {showBooks && (
                 <div className="pile-col" data-testid="pile-books">
-                  <div className="pile-cap">📚 本 {bookCount}</div>
+                  <div className="pile-cap">{t('lib.cap.books', '📚 本 {n}', { n: bookCount })}</div>
                   <div className="pile">
-                    {bookCount === 0 && listFor('books').length === 0 && <p className="pile-empty">本はまだありません</p>}
+                    {bookCount === 0 && listFor('books').length === 0 && <p className="pile-empty">{t('lib.nobooks', '本はまだありません')}</p>}
                     {renderPile('books')}
                   </div>
                 </div>
               )}
               {showFiles && (
                 <div className="pile-col" data-testid="pile-files">
-                  <div className="pile-cap">📁 ファイル {fileCount}</div>
+                  <div className="pile-cap">{t('lib.cap.files', '📁 ファイル {n}', { n: fileCount })}</div>
                   <div className="pile">
-                    {fileCount === 0 && listFor('files').length === 0 && <p className="pile-empty">ファイルはまだありません</p>}
+                    {fileCount === 0 && listFor('files').length === 0 && <p className="pile-empty">{t('lib.nofiles', 'ファイルはまだありません')}</p>}
                     {renderPile('files')}
                   </div>
                 </div>
@@ -430,11 +446,11 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
           <div className="board" />
         </div>
 
-        {!empty && <p className="hint center">持ったまま上下に動かすと、順番を入れ替えられます（長押し・右クリックで編集・削除）</p>}
+        {!empty && <p className="hint center">{t('lib.hint', '持ったまま上下に動かすと、順番を入れ替えられます（長押し・右クリックで編集・削除）')}</p>}
 
         {showBooks && shelfBooks.length > 0 && (
           <section className="bookcase" data-testid="bookcase">
-            <h3 className="section-title">📚 本棚（読破した本）</h3>
+            <h3 className="section-title">{t('lib.case', '📚 本棚（読破した本）')}</h3>
             {shelfRows.map((row, ri) => (
               <div className="case-row" key={ri}>
                 <div className="spines-row">
@@ -462,7 +478,7 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
 
         {data.bookItems.some((i) => !i.p.finished) && (
           <>
-            <h3 className="section-title">読書の進み具合</h3>
+            <h3 className="section-title">{t('lib.progress', '読書の進み具合')}</h3>
             <ul className="book-list">
               {data.bookItems.filter((i) => !i.p.finished).map(({ book: b, p }) => {
                 const t = todayPages(b);
@@ -486,7 +502,7 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
         )}
 
         <div className="fab-wrap">
-          <button className="fab" onClick={() => setPicker(true)} data-testid="add-fab" aria-label="追加する">＋</button>
+          <button className="fab" onClick={() => setPicker(true)} data-testid="add-fab" aria-label={t('lib.add', '追加する')}>＋</button>
         </div>
       </main>
 
@@ -503,19 +519,19 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
       {tray && (
         <div className="sheet-backdrop" onClick={() => setTray(false)}>
           <div className="sheet" role="dialog" aria-label="積み木" onClick={(e) => e.stopPropagation()} data-testid="tray">
-            <h3 className="sheet-title">🧱 積み木（{heldBlocks.length}個）</h3>
-            <p className="hint">本の山・ファイルの山の「間」に置くと、ブックエンドや仕切りになります。置いたあとは、ドラッグで好きな位置に動かせます。</p>
-            {heldBlocks.length === 0 && <p className="empty">持っている積み木はありません。ログインボーナスでもらえます。</p>}
+            <h3 className="sheet-title">{t('lib.tray.title', '🧱 積み木（{n}個）', { n: heldBlocks.length })}</h3>
+            <p className="hint">{t('lib.tray.hint', '本の山・ファイルの山の「間」に置くと、ブックエンドや仕切りになります。置いたあとは、ドラッグで好きな位置に動かせます。')}</p>
+            {heldBlocks.length === 0 && <p className="empty">{t('lib.tray.none', '持っている積み木はありません。')}</p>}
             <div className="tray-list">
               {heldBlocks.map((b) => (
                 <div key={b.id} className="tray-item" data-testid="tray-item">
                   <ToyBlock shape={b.shape} color={b.color} size={46} />
-                  <button className="btn small" onClick={() => { placeBlock(b.id, 'books', data.order.books); setDrop((d) => d + 1); changed(); }} data-testid="place-books">本の山へ</button>
-                  <button className="btn small" onClick={() => { placeBlock(b.id, 'files', data.order.files); setDrop((d) => d + 1); changed(); }} data-testid="place-files">ファイルの山へ</button>
+                  <button className="btn small" onClick={() => { placeBlock(b.id, 'books', data.order.books); setDrop((d) => d + 1); changed(); }} data-testid="place-books">{t('lib.tray.tobooks', '本の山へ')}</button>
+                  <button className="btn small" onClick={() => { placeBlock(b.id, 'files', data.order.files); setDrop((d) => d + 1); changed(); }} data-testid="place-files">{t('lib.tray.tofiles', 'ファイルの山へ')}</button>
                 </div>
               ))}
             </div>
-            <div className="sheet-actions"><button className="btn primary" onClick={() => setTray(false)}>閉じる</button></div>
+            <div className="sheet-actions"><button className="btn primary" onClick={() => setTray(false)}>{t('common.close', '閉じる')}</button></div>
           </div>
         </div>
       )}
@@ -523,10 +539,10 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
       {menuBlock && (
         <div className="sheet-backdrop" onClick={closeAll}>
           <div className="sheet menu-sheet" role="dialog" aria-label="積み木のメニュー" onClick={(e) => e.stopPropagation()}>
-            <h3 className="sheet-title menu-title">積み木</h3>
+            <h3 className="sheet-title menu-title">{t('lib.block', '積み木')}</h3>
             <div className="menu-actions">
-              <button className="btn block" onClick={() => { storeBlock(menuBlock.id); closeAll(); setDrop((d) => d + 1); changed(); }} data-testid="block-store">📦 持ち物にしまう</button>
-              <button className="btn ghost block" onClick={closeAll}>キャンセル</button>
+              <button className="btn block" onClick={() => { storeBlock(menuBlock.id); closeAll(); setDrop((d) => d + 1); changed(); }} data-testid="block-store">{t('lib.tray.store', '📦 持ち物にしまう')}</button>
+              <button className="btn ghost block" onClick={closeAll}>{t('common.cancel', 'キャンセル')}</button>
             </div>
           </div>
         </div>
@@ -576,6 +592,7 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
           }}
         />
       )}
+      {tut.node}
     </div>
   );
 }
