@@ -31,8 +31,14 @@ function enInfo(entry, surface) {
     if (/名詞/.test(entry.pos) && surface !== lemma && /s$/.test(surface)) return result([{ label: '複数形', tone: 'plural' }], null);
     return result([], null);
   }
-  const triple = enTriple(entry);
+  let triple = enTriple(entry);
   if (!triple) return result([], null);
+  // 句動詞（look out of など）：活用は最初の語だけ書かれているので、残りの部分をつなぐ
+  const headWord = norm(triple[0]);
+  if (headWord !== lemma && lemma.startsWith(headWord + ' ')) {
+    const tail = lemma.slice(headWord.length);
+    triple = [entry.lemma, triple[1] + tail, triple[2] + tail];
+  }
   const past = norm(triple[1]);
   const pp = norm(triple[2]);
   // 句動詞（waking up など）は最初の語で -ing を判定する
