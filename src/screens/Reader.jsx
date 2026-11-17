@@ -12,6 +12,7 @@ import WordDetail from '../components/WordDetail.jsx';
 import FormTags from '../components/FormTags.jsx';
 import ConjTable from '../components/ConjTable.jsx';
 import SpeakButton from '../components/SpeakButton.jsx';
+import SpeedSwitch from '../components/SpeedSwitch.jsx';
 import Reading from '../components/Reading.jsx';
 import { loadAlwaysDetail, saveAlwaysDetail } from '../lib/detailPref.js';
 import { loadSettings, highlightColor, posCategory } from '../lib/settings.js';
@@ -519,6 +520,7 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
             {showTrans ? '🌐 日本語訳を隠す' : '🌐 日本語訳を表示'}
           </button>
         </div>
+        <div className="speed-row">🔊 <SpeedSwitch /></div>
 
         <p className="reader-tip">
           タップ：単語の意味＋ハイライト（再タップで解除） ／ 長押し・ドラッグ：選んだ文やフレーズを翻訳

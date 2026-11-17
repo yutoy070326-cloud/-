@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import SpeedSwitch from './SpeedSwitch.jsx';
 import {
   POS_CATEGORIES, DEFAULT_COLORS, COLOR_CHOICES, loadSettings, saveSettings,
 } from '../lib/settings.js';
@@ -66,6 +67,11 @@ export default function SettingsSheet({ onClose }) {
             <span>「詳しく見る」を最初から開く</span>
             <input type="checkbox" checked={st.alwaysDetail} onChange={(e) => update({ alwaysDetail: e.target.checked })} data-testid="set-always-detail" />
           </label>
+        </section>
+
+        <section className="set-section">
+          <h4 className="set-h">音声の速さ</h4>
+          <div className="set-row"><span>🐢 ゆっくり ／ 🧑 ふつう ／ 🐇 はやい</span><SpeedSwitch /></div>
         </section>
 
         <section className="set-section">

@@ -559,3 +559,10 @@ export function touchMaterial(id, now = Date.now()) {
   if (!list.some((m) => m.id === id)) return;
   persist(list.map((m) => (m.id === id ? { ...m, lastStudiedAt: now } : m)), MKEY);
 }
+
+// 読破した本が本棚へ移った印（ライブラリで山積みから本棚へ飛んでいった時に付ける）
+export function markShelved(id, now = Date.now()) {
+  const list = loadBooks();
+  if (!list.some((b) => b.id === id)) return;
+  persist(list.map((b) => (b.id === id ? { ...b, shelvedAt: now } : b)), BKEY);
+}

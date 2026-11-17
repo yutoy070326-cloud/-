@@ -644,7 +644,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pile-cap { font-size: 11px; color: #7b6446; text-align: center; margin-bottom: auto; padding-bottom: 6px; }
 .pile { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .pile-empty { margin: 0; padding: 20px 0; font-size: 11px; color: #a08a68; text-align: center; }
-.stack-item { --c: #e0b85a; position: relative; display: block; flex: none; width: var(--w); height: var(--h); padding: 0; border: none; border-radius: 4px; overflow: hidden; cursor: pointer; text-align: left; font: inherit; background: color-mix(in srgb, var(--c) 38%, #2f261d); box-shadow: 0 2px 3px rgba(40, 25, 10, .35), inset 0 1px 0 rgba(255, 255, 255, .22); animation: block-drop .8s both; animation-delay: var(--d, 0ms); }
+.stack-item { --c: #e0b85a; position: relative; display: block; flex: none; width: var(--w); height: var(--h); padding: 0; border: none; border-radius: 4px; overflow: hidden; cursor: pointer; text-align: left; font: inherit; background: color-mix(in srgb, var(--c) 38%, #2f261d); box-shadow: 0 2px 3px rgba(40, 25, 10, .35), inset 0 1px 0 rgba(255, 255, 255, .22); animation: block-drop .8s backwards; animation-delay: var(--d, 0ms); }
 .stack-fill { position: absolute; left: 0; top: 0; bottom: 0; width: var(--p, 0%); background: var(--c); }
 .stack-label { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 1px; height: 100%; padding: 0 10px; }
 .stack-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 800; }
@@ -767,3 +767,90 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .medal-cell-desc { font-size: 10px; color: var(--muted); }
 .medal-cell-date { font-size: 10px; color: #a39d92; }
 .medal-cell.locked { opacity: .45; filter: grayscale(1); }
+
+/* 音声の速さスイッチ・あいさつの言語表示 */
+.speed-switch { display: inline-flex; gap: 2px; padding: 2px; border-radius: 16px; background: rgba(128, 128, 128, 0.18); }
+.speed-btn { padding: 3px 9px; border: none; border-radius: 14px; background: transparent; font-size: 17px; line-height: 1.2; cursor: pointer; opacity: .55; }
+.speed-btn.on { background: #fff; opacity: 1; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
+.speed-switch.in-topbar { margin-right: 8px; }
+.speed-row { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin: -4px 0 6px; font-size: 14px; }
+.bubble-lang { display: inline-block; margin-top: 8px; padding: 1px 10px; border-radius: 10px; background: #ffe9a8; font-size: 11px; font-weight: 700; color: #6b5a44; }
+
+/* ===== 筆で描く花丸・自分で書く欄・メダルの進化 ===== */
+.hanamaru-wrap { position: relative; display: inline-block; flex: none; }
+.hanamaru-wrap .hanamaru { display: block; }
+.hanamaru-wrap.draw path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw-circle var(--dur, 1300ms) ease-in-out forwards; animation-delay: var(--delay, 0ms); }
+.hanamaru-wrap:not(.draw) path { stroke-dasharray: none; stroke-dashoffset: 0; }
+.brush { position: absolute; left: 0; top: 0; font-size: 26px; line-height: 1; opacity: 0; offset-rotate: 0deg; offset-anchor: 8% 92%; offset-distance: 0%; animation: brush-move var(--dur, 1300ms) ease-in-out forwards; animation-delay: var(--delay, 0ms); pointer-events: none; z-index: 2; filter: drop-shadow(1px 2px 1px rgba(0,0,0,.35)); }
+@keyframes brush-move { 0% { offset-distance: 0%; opacity: 1; } 96% { offset-distance: 100%; opacity: 1; } 100% { offset-distance: 100%; opacity: 0; } }
+.note-line { min-height: 68px; }
+.own-box { margin-top: 14px; padding-top: 8px; border-top: 2px dashed #cfe0f5; display: flex; flex-direction: column; gap: 6px; animation: line-in .5s both; }
+.own-label { font-size: 13px; font-weight: 700; margin-top: 4px; }
+.own-row { display: flex; gap: 6px; }
+.own-row .input { flex: 1; min-width: 0; }
+.note-diary { margin: 8px 0 0; padding: 6px 10px; border-radius: 8px; background: #fff6d6; font-size: 13px; }
+.new-badge { position: absolute; top: -4px; right: 6px; z-index: 2; color: #e0262a; font-weight: 900; font-size: 13px; letter-spacing: .05em; text-shadow: 0 0 2px #fff; }
+.medal-cell { position: relative; }
+.medal-disc { position: relative; }
+.medal-disc.bronze { background: radial-gradient(circle at 35% 30%, #f3c9a0, #c98040 60%, #8a5322); border-color: #a8662c; }
+.medal-disc.silver { background: radial-gradient(circle at 35% 30%, #ffffff, #c9d1da 60%, #8b96a3); border-color: #9aa5b1; }
+.medal-disc.gold { background: radial-gradient(circle at 35% 30%, #fff3a8, #f2b705 60%, #b07d00); border-color: #d99a00; }
+.medal-disc.rainbow { background: conic-gradient(from 0deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #c77dff, #ff6b6b); border-color: #fff; box-shadow: 0 0 14px rgba(255, 220, 120, .9), 0 3px 8px rgba(0,0,0,.3); animation: rainbow-spin 6s linear infinite; }
+.medal-disc.rainbow .medal-emoji { animation: rainbow-spin 6s linear infinite reverse; }
+@keyframes rainbow-spin { to { transform: rotate(360deg); } }
+.medal-disc.deco { box-shadow: 0 0 0 4px rgba(255, 255, 255, .55), 0 0 12px rgba(255, 215, 90, .8), 0 3px 8px rgba(0,0,0,.3); }
+.medal-sparkle { position: absolute; top: -6px; right: -4px; font-size: 18px; color: #fff176; text-shadow: 0 0 6px #ffb300; animation: twinkle 1.4s ease-in-out infinite; }
+@keyframes twinkle { 50% { transform: scale(1.4) rotate(20deg); opacity: .6; } }
+.medal.is-locked .medal-disc { background: #cfcac0; border-color: #aaa59a; box-shadow: none; animation: none; }
+.medal.is-locked .medal-emoji { animation: none; color: #777; }
+.medal-cell.locked { opacity: .75; filter: none; }
+
+/* ===== 並べ替え・積み木・本棚 ===== */
+.lib-tools { display: flex; align-items: center; gap: 6px; margin: 2px 0 6px; }
+.sort-label { flex: none; font-size: 12px; color: var(--muted); }
+.sort-select { flex: 1; min-width: 0; padding: 7px 6px; font-size: 12px; }
+.tray-btn { flex: none; white-space: nowrap; }
+.stack-item.draggable { touch-action: none; cursor: grab; }
+.stack-item.dragging { cursor: grabbing; }
+.stack-item.toy-slot { width: 64px; min-width: 64px; background: none; box-shadow: none; overflow: visible; display: flex; align-items: flex-end; justify-content: center; }
+.toy { display: block; }
+.tray-list { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
+.tray-item { display: flex; align-items: center; gap: 8px; }
+.tray-item .btn { flex: 1; font-size: 12px; }
+.bookcase { margin: 14px 0 4px; padding: 10px 10px 0; border-radius: 12px; background: linear-gradient(#efe3cf, #e6d6bb); border: 1px solid #d9c6a3; box-shadow: inset 0 3px 10px rgba(80, 50, 20, .15); }
+.bookcase .section-title { margin: 0 0 6px; }
+.case-row { margin-bottom: 8px; }
+.spines-row { display: flex; align-items: flex-end; gap: 3px; min-height: 100px; padding: 0 4px; }
+.case-spine { position: relative; flex: none; padding: 0; border: none; border-radius: 3px 3px 0 0; cursor: pointer; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 80%, #000), var(--c) 40%, color-mix(in srgb, var(--c) 75%, #000)); box-shadow: 1px 0 3px rgba(40, 25, 10, .4); overflow: visible; }
+.case-spine.pending { visibility: hidden; }
+.case-title { position: absolute; inset: 22px 0 6px; display: flex; justify-content: center; align-items: flex-start; writing-mode: vertical-rl; font-size: 11px; font-weight: 800; color: #fff; overflow: hidden; text-shadow: 0 1px 2px rgba(0, 0, 0, .55); }
+.case-star { position: absolute; top: 2px; left: 0; right: 0; text-align: center; font-size: 13px; line-height: 1; }
+.case-spine.stamping .case-star { animation: star-show 0s .7s backwards; }
+.stamp-fx { position: absolute; left: 50%; top: 50%; font-size: 40px; line-height: 1; transform: translate(-50%, -50%); pointer-events: none; opacity: 0; z-index: 5; animation: stamp-press .8s ease-out; }
+@keyframes stamp-press { 0% { transform: translate(-50%, -50%) scale(4) rotate(-30deg); opacity: 0; } 45% { transform: translate(-50%, -50%) scale(1) rotate(8deg); opacity: 1; } 60% { transform: translate(-50%, -50%) scale(1.25) rotate(-4deg); } 100% { transform: translate(-50%, -50%) scale(.4) rotate(0); opacity: 0; } }
+@keyframes star-show { from { opacity: 0; } }
+
+/* ===== スタンプカード・ログインボーナス ===== */
+.stamp-card { padding: 12px; border: 2px dashed #e9a35b; border-radius: 14px; background: #fff7e8; }
+.stamp-card-head { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 800; }
+.stamp-card-head span { font-size: 12px; color: var(--muted); font-weight: 600; }
+.stamp-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.stamp-slot { position: relative; aspect-ratio: 1; border: 2px dotted #e0c9a3; border-radius: 50%; background: #fffdf6; display: flex; align-items: center; justify-content: center; }
+.stamp-no { position: absolute; font-size: 12px; color: #d4bf9a; }
+.stamp-slot.filled .stamp-no { display: none; }
+.hanko { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: 50%; border: 3px solid #d6262a; color: #d6262a; background: rgba(214, 38, 42, .06); transform: rotate(-8deg); }
+.hanko b { font-size: 18px; line-height: 1; }
+.hanko small { font-size: 9px; }
+.hanko.press { animation: hanko-press .9s .5s both cubic-bezier(.3, 1.4, .5, 1); opacity: 0; }
+@keyframes hanko-press { 0% { transform: translateY(-120px) scale(2.2) rotate(-25deg); opacity: 0; } 55% { transform: translateY(0) scale(.9) rotate(-8deg); opacity: 1; } 75% { transform: scale(1.12) rotate(-8deg); opacity: 1; } 100% { transform: scale(1) rotate(-8deg); opacity: 1; } }
+.bonus-backdrop { align-items: center; background: rgba(0, 0, 0, .55); z-index: 220; }
+.bonus-card { width: min(92vw, 400px); max-height: 92vh; overflow-y: auto; padding: 18px 16px; border-radius: 20px; background: #fffdf2; text-align: center; animation: char-pop .5s both cubic-bezier(.3, 1.5, .5, 1); }
+.bonus-card h2 { margin: 0 0 12px; font-size: 18px; }
+.bonus-block { margin: 12px 0; }
+.bonus-block p { margin: 4px 0 0; font-weight: 700; }
+.bonus-block-pop { display: inline-block; animation: char-pop .6s 1.5s both cubic-bezier(.3, 1.6, .5, 1); }
+.block-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ===== ホームに戻るボタン・ホームの導線（4つ）===== */
+.home-fab { position: fixed; left: 14px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 50; width: 52px; height: 52px; border: none; border-radius: 50%; background: #1f1d1a; color: #fff; font-size: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, .35); cursor: pointer; }
+.home-actions { grid-template-columns: 1fr 1fr; }

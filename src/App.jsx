@@ -16,7 +16,10 @@ import { StartGate, IntroScene } from './components/StartGate.jsx';
 import FinishFlow from './components/FinishFlow.jsx';
 import NotesScreen from './screens/NotesScreen.jsx';
 import MedalAlbum from './screens/MedalAlbum.jsx';
-import { startSession, loadSession, clearSession, oppositeChar, computeSummary, buildLines, newMedals, saveFinish } from './lib/diary.js';
+import StampScreen from './screens/StampScreen.jsx';
+import LoginBonus from './components/LoginBonus.jsx';
+import { claimLoginBonus } from './lib/shelf.js';
+import { startSession, loadSession, clearSession, oppositeChar, computeSummary, buildLines, newMedals, saveFinish, updateNote } from './lib/diary.js';
 import { shouldShowTutorial } from './lib/tutorial.js';
 import { loadWordbook, loadMaterials, loadBooks, loadFiles, migrateLibrary, touchMaterial } from './lib/storage.js';
 import { requestPersistentStorage } from './lib/backup.js';
@@ -48,7 +51,17 @@ export default function App() {
   // スタート画面 → 開始演出 → アプリ → （学習を終える）→ 達成ノート・お見送り → スタート画面
   const [phase, setPhase] = useState('gate'); // 'gate' | 'intro' | 'app' | 'finish'
   const [char, setChar] = useState(null); // 開始時に出たキャラクター（'boy' | 'girl'）
-  const [finish, setFinish] = useState(null); // { lines, medals, farewellChar }
+  const [bonus, setBonus] = useState(null); // ログインボーナス（スタンプ＋積み木）
+  const [trail, setTrail] = useState([]); // ホームから何画面ぶん進んだか
+  const [finish, setFinish] = useState(null); // { noteId, lines, medals, farewellChar }
+  // ホームから2画面以上進んだら「ホームへ」ボタンを出す（戻るボタンはそのまま使える）
+  useEffect(() => {
+    setTrail((t) => {
+      if (screen === 'home') return [];
+      const i = t.indexOf(screen);
+      return i >= 0 ? t.slice(0, i + 1) : [...t, screen];
+    });
+  }, [screen]);
   const begin = () => {
     const s = startSession();
     setChar(s.char);
@@ -59,8 +72,8 @@ export default function App() {
     const sum = computeSummary(s.startedAt);
     const lines = buildLines(sum);
     const medals = newMedals(sum);
-    saveFinish(lines, medals); // 押した時点で保存（演出の途中で閉じても残る）
-    setFinish({ lines, medals, farewellChar: oppositeChar(s.char) }); // 開始時と反対のキャラクターでお見送り
+    const noteId = saveFinish(lines, medals); // 押した時点で保存（演出の途中で閉じても残る）
+    setFinish({ noteId, lines, medals, farewellChar: oppositeChar(s.char) }); // 開始時と反対のキャラクターでお見送り
     setPhase('finish');
   };
 
@@ -121,6 +134,7 @@ export default function App() {
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenNotes={() => setScreen('notes')}
           onOpenMedals={() => setScreen('medals')}
+          onOpenStamps={() => setScreen('stamps')}
           onFinishStudy={endStudy}
           onDataRestored={(c) => {
             setWordCount(c.words);
@@ -252,13 +266,19 @@ export default function App() {
       {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
       {screen === 'notes' && <NotesScreen onBack={() => setScreen('home')} />}
       {screen === 'medals' && <MedalAlbum onBack={() => setScreen('home')} />}
+      {screen === 'stamps' && <StampScreen onBack={() => setScreen('home')} />}
+      {phase === 'app' && screen !== 'home' && trail.length >= 2 && (
+        <button className="home-fab" onClick={() => setScreen('home')} aria-label="ホームに戻る" data-testid="home-fab">🏠</button>
+      )}
+      {phase === 'app' && bonus && <LoginBonus bonus={bonus} onClose={() => setBonus(null)} />}
       {phase === 'gate' && <StartGate onStart={begin} />}
-      {phase === 'intro' && <IntroScene char={char} onDone={() => setPhase('app')} />}
+      {phase === 'intro' && <IntroScene char={char} onDone={() => { setPhase('app'); setBonus(claimLoginBonus()); }} />}
       {phase === 'finish' && finish && (
         <FinishFlow
           lines={finish.lines}
           medals={finish.medals}
           farewellChar={finish.farewellChar}
+          onSaveExtras={(x) => updateNote(finish.noteId, x)}
           onDone={() => {
             clearSession();
             setFinish(null);

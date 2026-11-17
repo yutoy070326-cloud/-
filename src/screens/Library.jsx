@@ -1,9 +1,11 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { loadBooks, loadFiles, loadMaterials, loadWordbook, bookProgress, bookWordCount, todayPages, updateBook, removeBook, renameFile, removeFile } from '../lib/storage.js';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { loadBooks, loadFiles, loadMaterials, loadWordbook, bookProgress, bookWordCount, todayPages, updateBook, removeBook, renameFile, removeFile, markShelved } from '../lib/storage.js';
+import { loadShelf, setOrder, setSortMode, placeBlock, storeBlock } from '../lib/shelf.js';
 import ItemMenu from '../components/ItemMenu.jsx';
 import KindPicker from '../components/KindPicker.jsx';
 import BookEditSheet from '../components/BookEditSheet.jsx';
 import TitleSheet from '../components/TitleSheet.jsx';
+import ToyBlock from '../components/ToyBlock.jsx';
 import { langName } from '../lib/storyAI.js';
 import { bookColor } from '../lib/bookStyle.js';
 
@@ -22,55 +24,76 @@ const fileSize = (chars) => ({
   h: Math.round(clamp(30 + Math.sqrt(chars) * 0.7, 30, 88)),
   w: Math.round(clamp(72 + Math.sqrt(chars) * 0.3, 72, 100)),
 });
+// 本棚に立てた本：ページ数で背の高さと厚みが変わる
+const spineSize = (pages) => ({
+  h: Math.round(clamp(92 + Math.sqrt(pages) * 3, 92, 140)),
+  w: Math.round(clamp(26 + Math.sqrt(pages) * 1.6, 26, 48)),
+});
 
-// 本棚（ライブラリ）：本の山とファイルの山を、それぞれ積み上げる。開くたび・タブを切り替えるたびに、上から落ちて積み重なる。
-// 本はページ数で、ファイルは文章の量で厚みが変わる。本は読んだページの割合だけ色が塗られるので、積み重ねを見るだけで進み具合がわかる。
+const GAP = 2; // 山のブロック同士のすきま（px）
+const BLOCK_H = 54; // 積み木の台の高さ
+const PER_ROW = 7; // 本棚の1段に並べる本の数
+
+// ---- 並び順（自動）----
+const SORTS = [
+  { id: 'manual', label: '手動（ドラッグで入れ替え）' },
+  { id: 'new', label: '登録が新しい順' },
+  { id: 'old', label: '登録が古い順' },
+  { id: 'many', label: 'ページ数・文章数が多い順' },
+  { id: 'few', label: 'ページ数・文章数が少ない順' },
+  { id: 'alpha', label: 'アルファベット順（言語ごとの順）' },
+  { id: 'progress', label: '達成度順（本：少ない→100%に近い）' },
+];
+// 言語ごとにまとめて、その言語の並べ方で比べる（日本語は50音、中国語は拼音の順 など）
+const LANG_ORDER = ['en', 'es', 'fr', 'de', 'ja', 'zh', 'ko', 'ru', 'ar'];
+const COLLATE_TAG = { zh: 'zh-u-co-pinyin', ja: 'ja', ko: 'ko', ru: 'ru', ar: 'ar', es: 'es', fr: 'fr', de: 'de', en: 'en' };
+const collators = {};
+const collator = (lang) => (collators[lang] ??= new Intl.Collator(COLLATE_TAG[lang] ?? lang ?? 'en', { sensitivity: 'base', numeric: true }));
+const langRank = (l) => { const i = LANG_ORDER.indexOf(l); return i < 0 ? 99 : i; };
+
+function comparator(mode, pile) {
+  const metric = (it) => (pile === 'books' ? it.book.totalPages ?? 0 : it.count ?? 0);
+  switch (mode) {
+    case 'new': return (a, b) => b.at - a.at;
+    case 'old': return (a, b) => a.at - b.at;
+    case 'many': return (a, b) => metric(b) - metric(a);
+    case 'few': return (a, b) => metric(a) - metric(b);
+    case 'alpha': return (a, b) => langRank(a.lang) - langRank(b.lang) || collator(a.lang).compare(a.name, b.name);
+    case 'progress': return pile === 'books' ? (a, b) => a.p.pct - b.p.pct : (a, b) => b.at - a.at;
+    default: return () => 0;
+  }
+}
+
+// 保存済みの並びに、新しいもの（上に積む）と消えたものを反映する
+function mergeOrder(saved, items) {
+  const have = new Set(items.map((i) => i.id));
+  const kept = saved.filter((id) => have.has(id));
+  const fresh = items.filter((i) => !kept.includes(i.id)).sort((a, b) => b.at - a.at).map((i) => i.id);
+  return [...fresh, ...kept];
+}
+
+// 本棚（ライブラリ）：本の山とファイルの山を、それぞれ積み上げる。開くたび・タブや並び順を切り替えるたびに、上から落ちて積み重なる。
+// ブロックはドラッグで上下に入れ替えできる。読破した本は、開いたときに山から下の本棚へ飛んでいって、⭐のスタンプが押される。
 const LONG_PRESS_MS = 500;
 const MOVE_TOL = 10;
+const DRAG_START = 8;
 
 export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChanged, onShowTutorial }) {
   const [picker, setPicker] = useState(false);
   const [rev, setRev] = useState(0);
   const [tab, setTab] = useState('all'); // 'all' | 'book' | ファイルの種類
-  const [drop, setDrop] = useState(0); // タブを切り替えるたびに増やして、積み上げの演出をやり直す
-  const [menu, setMenu] = useState(null); // { type: 'book'|'file', id }
-  const [mode, setMode] = useState(null); // 'edit' | null（メニューから編集を選んだ）
+  const [drop, setDrop] = useState(0); // タブ・並び順を切り替えるたびに増やして、積み上げの演出をやり直す
+  const [menu, setMenu] = useState(null); // { type: 'book'|'file'|'block', id }
+  const [mode, setMode] = useState(null); // 'edit' | null
   const [fileError, setFileError] = useState('');
-  const press = useRef({ t: null, fired: false, x: 0, y: 0 });
-
-  // 長押し（タッチ・マウス）と右クリックでメニューを開く。長押しのあとに指を離しても「開く」は実行しない。
-  const pressProps = (type, id, open) => ({
-    onPointerDown: (e) => {
-      press.current.fired = false;
-      press.current.x = e.clientX;
-      press.current.y = e.clientY;
-      window.clearTimeout(press.current.t);
-      press.current.t = window.setTimeout(() => {
-        press.current.fired = true;
-        navigator.vibrate?.(15);
-        setMenu({ type, id });
-      }, LONG_PRESS_MS);
-    },
-    onPointerMove: (e) => {
-      if (Math.hypot(e.clientX - press.current.x, e.clientY - press.current.y) > MOVE_TOL) window.clearTimeout(press.current.t);
-    },
-    onPointerUp: () => window.clearTimeout(press.current.t),
-    onPointerCancel: () => window.clearTimeout(press.current.t),
-    onPointerLeave: () => window.clearTimeout(press.current.t),
-    onContextMenu: (e) => {
-      e.preventDefault();
-      window.clearTimeout(press.current.t);
-      press.current.fired = true;
-      setMenu({ type, id });
-    },
-    onClick: () => {
-      if (press.current.fired) {
-        press.current.fired = false;
-        return;
-      }
-      open();
-    },
-  });
+  const [tray, setTray] = useState(false); // 積み木の持ち物
+  const [stamped, setStamped] = useState(() => new Set()); // ⭐スタンプを押している本
+  const [drag, setDrag] = useState(null); // { id, pile, dy }
+  const press = useRef({ t: null, fired: false, x: 0, y: 0, dragging: false, startY: 0, id: null, pile: null });
+  const nodes = useRef({}); // 山のブロックの DOM
+  const shelfNodes = useRef({}); // 本棚の本の DOM
+  const ordRef = useRef({ books: [], files: [] }); // いまの並び（ドラッグ中に更新する）
+  const flown = useRef(false);
 
   const changed = () => {
     setRev((r) => r + 1);
@@ -83,34 +106,269 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
     const files = loadFiles();
     const mats = loadMaterials();
     const words = loadWordbook();
-    const items = [
-      ...books.map((b) => ({ type: 'book', id: b.id, at: b.createdAt ?? 0, book: b })),
-      ...files.map((f) => ({ type: 'file', id: f.id, at: f.createdAt ?? 0, file: f, count: mats.filter((m) => m.fileId === f.id).length, chars: mats.filter((m) => m.fileId === f.id).reduce((n, m) => n + (m.text?.length ?? 0), 0) })),
-    ].sort((a, b) => a.at - b.at);
+    const shelf = loadShelf();
+    const bookItems = books.map((b) => ({ type: 'book', id: b.id, at: b.createdAt ?? 0, book: b, p: bookProgress(b), name: b.title, lang: b.lang }));
+    const fileItems = files.map((f) => {
+      const ms = mats.filter((m) => m.fileId === f.id);
+      return { type: 'file', id: f.id, at: f.createdAt ?? 0, file: f, count: ms.length, chars: ms.reduce((n, m) => n + (m.text?.length ?? 0), 0), name: f.name, lang: ms[0]?.lang ?? 'en' };
+    });
+    const blockItems = shelf.blocks.map((b) => ({ type: 'block', id: b.id, at: b.at ?? 0, block: b }));
+    const shelvedBooks = bookItems.filter((i) => i.p.finished && i.book.shelvedAt).sort((a, b) => a.book.shelvedAt - b.book.shelvedAt);
+    const leaving = bookItems.filter((i) => i.p.finished && !i.book.shelvedAt); // 読破したけど、まだ山にいる本
+    const pileBooks = [...bookItems.filter((i) => !(i.p.finished && i.book.shelvedAt)), ...blockItems.filter((i) => i.block.pile === 'books')];
+    const pileFiles = [...fileItems, ...blockItems.filter((i) => i.block.pile === 'files')];
+    const byId = Object.fromEntries([...pileBooks, ...pileFiles].map((i) => [i.id, i]));
+    const order = { books: mergeOrder(shelf.order.books, pileBooks), files: mergeOrder(shelf.order.files, pileFiles) };
     let pages = 0, finished = 0;
     for (const b of books) {
       const p = bookProgress(b);
       pages += p.done;
       if (p.finished) finished += 1;
     }
-    return { books, files, items, words, stats: { pages, finished } };
+    return { books, files, words, shelf, bookItems, fileItems, blockItems, shelvedBooks, leaving, order, byId, stats: { pages, finished } };
   }, [rev]);
-  // 種類のタブ：すべて／本／ファイルの種類（ある種類だけ）
-  const fileItems = data.items.filter((i) => i.type === 'file');
+  ordRef.current = drag ? ordRef.current : data.order; // ドラッグ中以外は、保存された並びをそのまま使う
+  const order = ordRef.current;
+
+  // ---- タブ ----
   const tabs = [
-    { id: 'all', label: 'すべて', n: data.items.length },
+    { id: 'all', label: 'すべて', n: data.books.length + data.files.length },
     ...(data.books.length ? [{ id: 'book', label: '本', n: data.books.length }] : []),
-    ...KIND_ORDER.filter((k) => fileItems.some((i) => i.file.kind === k)).map((k) => ({ id: k, label: KIND_TAB[k], n: fileItems.filter((i) => i.file.kind === k).length })),
+    ...KIND_ORDER.filter((k) => data.fileItems.some((i) => i.file.kind === k)).map((k) => ({ id: k, label: KIND_TAB[k], n: data.fileItems.filter((i) => i.file.kind === k).length })),
   ];
-  const active = tabs.some((t) => t.id === tab) ? tab : 'all'; // 削除で種類が無くなったら「すべて」へ
+  const active = tabs.some((t) => t.id === tab) ? tab : 'all';
   const showBooks = active === 'all' || active === 'book';
-  const showFiles = active === 'all' || (active !== 'book');
-  // 積み重ね：古いものが下、新しいものが上
-  const books = showBooks ? data.items.filter((i) => i.type === 'book').map((i) => i.book) : [];
-  const files = showFiles ? fileItems.filter((i) => active === 'all' || i.file.kind === active) : [];
+  const showFiles = active !== 'book';
+  const filteredFiles = active === 'all' ? null : active; // 種類で絞り込み中は、並べ替えできない
+  const canDrag = (pile) => (pile === 'books' ? showBooks : pile === 'files' ? showFiles && !filteredFiles : false);
   const pickTab = (id) => { setTab(id); setDrop((d) => d + 1); };
+
+  const listFor = (pile) => order[pile].map((id) => data.byId[id]).filter((it) => {
+    if (!it) return false;
+    if (pile === 'files' && filteredFiles) return it.type === 'file' && it.file.kind === filteredFiles; // 種類で絞り込み中
+    return true;
+  });
+
+  // ---- 自動で並べ替え ----
+  const [sortMode, setSortModeState] = useState(() => loadShelf().sort);
+  const applySort = (mode) => {
+    setSortModeState(mode);
+    setSortMode(mode);
+    if (mode !== 'manual') {
+      for (const pile of ['books', 'files']) {
+        const cur = data.order[pile];
+        const items = cur.map((id) => data.byId[id]).filter((it) => it && it.type !== 'block');
+        const sorted = [...items].sort(comparator(mode, pile)).map((i) => i.id);
+        let k = 0; // 積み木は、いまの位置のまま動かさない
+        setOrder(pile, cur.map((id) => (data.byId[id]?.type === 'block' ? id : sorted[k++])));
+      }
+    }
+    setDrop((d) => d + 1);
+    changed();
+  };
+
+  // ---- 長押し（メニュー）・ドラッグ（入れ替え）・タップ（開く）----
+  // ドラッグ中はブロックが DOM 上で入れ替わり、ポインターの捕捉が外れるので、window で動きを受け取る
+  const handlers = useRef({});
+  handlers.current.move = (e) => {
+    const p = press.current;
+    if (!p.dragging) return;
+    const { id, pile } = p;
+    let off = e.clientY - p.startY;
+    const ids = ordRef.current[pile];
+    const idx = ids.indexOf(id);
+    const hOf = (otherId) => (nodes.current[otherId]?.offsetHeight ?? 40) + GAP;
+    if (off > 0 && idx < ids.length - 1) {
+      const h = hOf(ids[idx + 1]);
+      if (off > h * 0.6) { // 下の隣を半分以上こえた → 入れ替え
+        const next = [...ids]; [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+        ordRef.current = { ...ordRef.current, [pile]: next };
+        p.startY += h; off -= h;
+      }
+    } else if (off < 0 && idx > 0) {
+      const h = hOf(ids[idx - 1]);
+      if (-off > h * 0.6) { // 上の隣を半分以上こえた → 入れ替え
+        const next = [...ids]; [next[idx], next[idx - 1]] = [next[idx - 1], next[idx]];
+        ordRef.current = { ...ordRef.current, [pile]: next };
+        p.startY -= h; off += h;
+      }
+    }
+    setDrag({ id, pile, dy: off });
+  };
+  handlers.current.up = (commit) => {
+    const p = press.current;
+    window.removeEventListener('pointermove', p.mv);
+    window.removeEventListener('pointerup', p.up);
+    window.removeEventListener('pointercancel', p.cancel);
+    if (!p.dragging) return;
+    p.dragging = false;
+    if (commit) {
+      setOrder(p.pile, ordRef.current[p.pile]); // 入れ替えた並びを保存
+      setSortModeState('manual');
+      setSortMode('manual');
+      changed();
+    }
+    setDrag(null);
+  };
+  const startDrag = (e, id, pile) => {
+    const p = press.current;
+    window.clearTimeout(p.t);
+    p.fired = true; p.dragging = true; p.startY = e.clientY; p.id = id; p.pile = pile;
+    ordRef.current = { books: [...data.order.books], files: [...data.order.files] };
+    p.mv = (ev) => handlers.current.move(ev);
+    p.up = () => handlers.current.up(true);
+    p.cancel = () => handlers.current.up(false);
+    window.addEventListener('pointermove', p.mv);
+    window.addEventListener('pointerup', p.up);
+    window.addEventListener('pointercancel', p.cancel);
+    setDrag({ id, pile, dy: 0 });
+  };
+  useEffect(() => () => handlers.current.up(false), []);
+
+  const bind = (type, id, pile, open) => ({
+    onPointerDown: (e) => {
+      const p = press.current;
+      p.fired = false; p.x = e.clientX; p.y = e.clientY;
+      window.clearTimeout(p.t);
+      p.t = window.setTimeout(() => {
+        p.fired = true;
+        navigator.vibrate?.(15);
+        setMenu({ type, id });
+      }, LONG_PRESS_MS);
+    },
+    onPointerMove: (e) => {
+      const p = press.current;
+      if (p.dragging) return;
+      const dx = e.clientX - p.x;
+      const dy = e.clientY - p.y;
+      if (canDrag(pile) && Math.abs(dy) > DRAG_START && Math.abs(dy) > Math.abs(dx)) startDrag(e, id, pile); // 持ったまま上下に動かした
+      else if (Math.hypot(dx, dy) > MOVE_TOL) window.clearTimeout(p.t);
+    },
+    onPointerUp: () => window.clearTimeout(press.current.t),
+    onPointerCancel: () => window.clearTimeout(press.current.t),
+    onPointerLeave: () => { if (!press.current.dragging) window.clearTimeout(press.current.t); },
+    onContextMenu: (e) => {
+      e.preventDefault();
+      window.clearTimeout(press.current.t);
+      press.current.fired = true;
+      setMenu({ type, id });
+    },
+    onClick: () => {
+      if (press.current.fired) {
+        press.current.fired = false;
+        return;
+      }
+      open?.();
+    },
+  });
+
+  // ---- 読破した本が、山から本棚へ飛んでいく ----
+  const leavingKey = data.leaving.map((i) => i.id).join(',');
+  useEffect(() => {
+    if (!data.leaving.length) return undefined;
+    let cancelled = false;
+    const wait = (ms) => new Promise((r) => window.setTimeout(r, ms));
+    (async () => {
+      await wait(flown.current ? 250 : 2200); // 山が積み上がり終わってから
+      flown.current = true;
+      for (const it of data.leaving) {
+        if (cancelled) return;
+        const from = nodes.current[it.id];
+        const to = shelfNodes.current[it.id];
+        if (!from || !to) continue;
+        to.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        await wait(650);
+        if (cancelled) return;
+        const a = from.getBoundingClientRect();
+        const b = to.getBoundingClientRect();
+        const dx = b.left + b.width / 2 - (a.left + a.width / 2);
+        const dy = b.top + b.height / 2 - (a.top + a.height / 2);
+        from.style.zIndex = '30';
+        const fly = from.animate(
+          [
+            { transform: 'translate(0,0) rotate(0deg) scale(1)' },
+            { transform: `translate(${dx * 0.45}px, ${dy * 0.45 - 90}px) rotate(200deg) scale(.7)`, offset: 0.5 },
+            { transform: `translate(${dx}px, ${dy}px) rotate(360deg) scale(${Math.min(1, b.width / a.width)})`, opacity: 1 },
+          ],
+          { duration: 1100, easing: 'ease-in-out', fill: 'forwards' },
+        );
+        await fly.finished.catch(() => {});
+        if (cancelled) return;
+        markShelved(it.id);
+        setStamped((s) => new Set(s).add(it.id)); // ⭐スタンプを押す
+        changed();
+        await wait(1100);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leavingKey]);
+
   const menuBook = menu?.type === 'book' ? data.books.find((b) => b.id === menu.id) : null;
   const menuFile = menu?.type === 'file' ? data.files.find((f) => f.id === menu.id) : null;
+  const menuBlock = menu?.type === 'block' ? data.shelf.blocks.find((b) => b.id === menu.id) : null;
+  const heldBlocks = data.shelf.blocks.filter((b) => !b.pile);
+  const empty = data.books.length + data.files.length === 0;
+
+  const dragStyle = (id) => (drag?.id === id ? { transform: `translateY(${drag.dy}px) scale(1.04)`, zIndex: 40, boxShadow: '0 10px 22px rgba(0,0,0,.45)', transition: 'none' } : undefined);
+
+  const renderItem = (it, pile, rank) => {
+    const dragging = drag?.id === it.id;
+    const common = { ref: (el) => { nodes.current[it.id] = el; } };
+    const drg = canDrag(pile) ? ' draggable' : '';
+    if (it.type === 'block') {
+      const b = it.block;
+      return (
+        <button key={it.id} {...common} className={'stack-item toy-slot' + drg + (dragging ? ' dragging' : '')} data-testid="toy-block"
+          style={{ '--h': `${BLOCK_H}px`, '--d': `${rank * 90 + 30}ms`, ...dragStyle(it.id) }}
+          {...bind('block', b.id, pile, null)} aria-label="積み木（ドラッグで位置を変えられます）">
+          <ToyBlock shape={b.shape} color={b.color} size={BLOCK_H} />
+        </button>
+      );
+    }
+    if (it.type === 'book') {
+      const b = it.book;
+      const { h, w } = bookSize(b.totalPages ?? 1);
+      return (
+        <button key={it.id} {...common} className={'stack-item book' + drg + (dragging ? ' dragging' : '')} data-testid="book-cover"
+          style={{ '--c': bookColor(b), '--h': `${h}px`, '--w': `${w}%`, '--p': `${it.p.pct}%`, '--d': `${rank * 90}ms`, ...dragStyle(it.id) }}
+          {...bind('book', b.id, pile, () => onOpenBook(b.id))}
+          aria-label={`${b.title}（読んだページ ${it.p.done}/${b.totalPages}、覚えた単語 ${bookWordCount(b, data.words)}語）`}>
+          <span className="stack-fill" aria-hidden="true" />
+          <span className="stack-label">
+            <span className="stack-title">{b.title}</span>
+            {h >= 44 && <span className="stack-info">{it.p.done}/{b.totalPages}p ・ {it.p.pct}%</span>}
+          </span>
+        </button>
+      );
+    }
+    const f = it.file;
+    const { h, w } = fileSize(it.chars);
+    return (
+      <button key={it.id} {...common} className={`stack-item file k-${f.kind}` + drg + (dragging ? ' dragging' : '')} data-testid="file-folder"
+        style={{ '--h': `${h}px`, '--w': `${w}%`, '--d': `${rank * 90 + 45}ms`, ...dragStyle(it.id) }}
+        {...bind('file', f.id, pile, () => onOpenFile(f.id))}
+        aria-label={`ファイル ${f.name}（${it.count}件、${it.chars}字）`}>
+        <span className="stack-label">
+          <span className="stack-title">{KIND_ICON[f.kind] ?? '📁'} {f.name}</span>
+          {h >= 44 && <span className="stack-info">{it.count}件 ・ {it.chars.toLocaleString()}字</span>}
+        </span>
+      </button>
+    );
+  };
+
+  const renderPile = (pile) => {
+    const items = listFor(pile);
+    const n = items.length;
+    return items.map((it, k) => renderItem(it, pile, n - 1 - k)); // 下の段から順に落ちてくる
+  };
+  const bookCount = listFor('books').filter((i) => i.type === 'book').length;
+  const fileCount = listFor('files').filter((i) => i.type === 'file').length;
+
+  // ---- 本棚（読破した本）----
+  const shelfBooks = [...data.shelvedBooks, ...data.leaving];
+  const shelfRows = [];
+  for (let i = 0; i < shelfBooks.length; i += PER_ROW) shelfRows.push(shelfBooks.slice(i, i + PER_ROW));
 
   return (
     <div className="screen">
@@ -136,57 +394,34 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
           ))}
         </nav>
 
+        <div className="lib-tools">
+          <label className="sort-label" htmlFor="lib-sort">並び順</label>
+          <select id="lib-sort" className="input sort-select" value={sortMode} onChange={(e) => applySort(e.target.value)} data-testid="lib-sort">
+            {SORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+          </select>
+          <button className="btn small tray-btn" onClick={() => setTray(true)} data-testid="open-tray">🧱 積み木 {heldBlocks.length}</button>
+        </div>
+
         <div className="stack" data-testid="shelf" key={`${active}-${drop}`}>
-          {data.items.length === 0 ? (
+          {empty && data.blockItems.length === 0 ? (
             <p className="shelf-empty">まだ何もありません。<br />右下の「＋」から、本や記事を追加しましょう。</p>
           ) : (
             <div className={'piles' + (showBooks && showFiles ? ' two' : '')}>
               {showBooks && (
                 <div className="pile-col" data-testid="pile-books">
-                  <div className="pile-cap">📚 本 {books.length}</div>
+                  <div className="pile-cap">📚 本 {bookCount}</div>
                   <div className="pile">
-                    {books.length === 0 && <p className="pile-empty">本はまだありません</p>}
-                    {[...books].reverse().map((b, k) => {
-                      const p = bookProgress(b);
-                      const { h, w } = bookSize(b.totalPages ?? 1);
-                      const rank = books.length - 1 - k; // 下から何番目か（下から順に落ちてくる）
-                      return (
-                        <button key={b.id} className="stack-item book" data-testid="book-cover"
-                          style={{ '--c': bookColor(b), '--h': `${h}px`, '--w': `${w}%`, '--p': `${p.pct}%`, '--d': `${rank * 90}ms` }}
-                          {...pressProps('book', b.id, () => onOpenBook(b.id))}
-                          aria-label={`${b.title}（読んだページ ${p.done}/${b.totalPages}、覚えた単語 ${bookWordCount(b, data.words)}語）`}>
-                          <span className="stack-fill" aria-hidden="true" />
-                          <span className="stack-label">
-                            <span className="stack-title">{p.finished && '★ '}{b.title}</span>
-                            {h >= 44 && <span className="stack-info">{p.done}/{b.totalPages}p ・ {p.pct}%</span>}
-                          </span>
-                        </button>
-                      );
-                    })}
+                    {bookCount === 0 && listFor('books').length === 0 && <p className="pile-empty">本はまだありません</p>}
+                    {renderPile('books')}
                   </div>
                 </div>
               )}
               {showFiles && (
                 <div className="pile-col" data-testid="pile-files">
-                  <div className="pile-cap">📁 ファイル {files.length}</div>
+                  <div className="pile-cap">📁 ファイル {fileCount}</div>
                   <div className="pile">
-                    {files.length === 0 && <p className="pile-empty">ファイルはまだありません</p>}
-                    {[...files].reverse().map((it, k) => {
-                      const f = it.file;
-                      const { h, w } = fileSize(it.chars);
-                      const rank = files.length - 1 - k;
-                      return (
-                        <button key={f.id} className={`stack-item file k-${f.kind}`} data-testid="file-folder"
-                          style={{ '--h': `${h}px`, '--w': `${w}%`, '--d': `${rank * 90 + 45}ms` }}
-                          {...pressProps('file', f.id, () => onOpenFile(f.id))}
-                          aria-label={`ファイル ${f.name}（${it.count}件、${it.chars}字）`}>
-                          <span className="stack-label">
-                            <span className="stack-title">{KIND_ICON[f.kind] ?? '📁'} {f.name}</span>
-                            {h >= 44 && <span className="stack-info">{it.count}件 ・ {it.chars.toLocaleString()}字</span>}
-                          </span>
-                        </button>
-                      );
-                    })}
+                    {fileCount === 0 && listFor('files').length === 0 && <p className="pile-empty">ファイルはまだありません</p>}
+                    {renderPile('files')}
                   </div>
                 </div>
               )}
@@ -195,14 +430,41 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
           <div className="board" />
         </div>
 
-        {data.items.length > 0 && <p className="hint center">本・ファイルを長押し（右クリック）すると、編集・削除できます</p>}
+        {!empty && <p className="hint center">持ったまま上下に動かすと、順番を入れ替えられます（長押し・右クリックで編集・削除）</p>}
 
-        {data.books.length > 0 && (
+        {showBooks && shelfBooks.length > 0 && (
+          <section className="bookcase" data-testid="bookcase">
+            <h3 className="section-title">📚 本棚（読破した本）</h3>
+            {shelfRows.map((row, ri) => (
+              <div className="case-row" key={ri}>
+                <div className="spines-row">
+                  {row.map((it) => {
+                    const b = it.book;
+                    const { h, w } = spineSize(b.totalPages ?? 1);
+                    const pending = !b.shelvedAt; // まだ山から飛んでくる途中（場所だけ空けておく）
+                    return (
+                      <button key={b.id} ref={(el) => { shelfNodes.current[b.id] = el; }}
+                        className={'case-spine' + (pending ? ' pending' : '') + (stamped.has(b.id) ? ' stamping' : '')}
+                        data-testid="shelf-book" style={{ '--c': bookColor(b), height: h, width: w }}
+                        {...bind('book', b.id, 'case', () => onOpenBook(b.id))} aria-label={`${b.title}（読破）`}>
+                        <span className="case-title">{b.title}</span>
+                        {!pending && <span className="case-star" data-testid="case-star">⭐</span>}
+                        {stamped.has(b.id) && <span className="stamp-fx" aria-hidden="true">⭐</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="board" />
+              </div>
+            ))}
+          </section>
+        )}
+
+        {data.bookItems.some((i) => !i.p.finished) && (
           <>
             <h3 className="section-title">読書の進み具合</h3>
             <ul className="book-list">
-              {data.books.map((b) => {
-                const p = bookProgress(b);
+              {data.bookItems.filter((i) => !i.p.finished).map(({ book: b, p }) => {
                 const t = todayPages(b);
                 return (
                   <li key={b.id}>
@@ -236,6 +498,38 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
             onAdd(k);
           }}
         />
+      )}
+
+      {tray && (
+        <div className="sheet-backdrop" onClick={() => setTray(false)}>
+          <div className="sheet" role="dialog" aria-label="積み木" onClick={(e) => e.stopPropagation()} data-testid="tray">
+            <h3 className="sheet-title">🧱 積み木（{heldBlocks.length}個）</h3>
+            <p className="hint">本の山・ファイルの山の「間」に置くと、ブックエンドや仕切りになります。置いたあとは、ドラッグで好きな位置に動かせます。</p>
+            {heldBlocks.length === 0 && <p className="empty">持っている積み木はありません。ログインボーナスでもらえます。</p>}
+            <div className="tray-list">
+              {heldBlocks.map((b) => (
+                <div key={b.id} className="tray-item" data-testid="tray-item">
+                  <ToyBlock shape={b.shape} color={b.color} size={46} />
+                  <button className="btn small" onClick={() => { placeBlock(b.id, 'books', data.order.books); setDrop((d) => d + 1); changed(); }} data-testid="place-books">本の山へ</button>
+                  <button className="btn small" onClick={() => { placeBlock(b.id, 'files', data.order.files); setDrop((d) => d + 1); changed(); }} data-testid="place-files">ファイルの山へ</button>
+                </div>
+              ))}
+            </div>
+            <div className="sheet-actions"><button className="btn primary" onClick={() => setTray(false)}>閉じる</button></div>
+          </div>
+        </div>
+      )}
+
+      {menuBlock && (
+        <div className="sheet-backdrop" onClick={closeAll}>
+          <div className="sheet menu-sheet" role="dialog" aria-label="積み木のメニュー" onClick={(e) => e.stopPropagation()}>
+            <h3 className="sheet-title menu-title">積み木</h3>
+            <div className="menu-actions">
+              <button className="btn block" onClick={() => { storeBlock(menuBlock.id); closeAll(); setDrop((d) => d + 1); changed(); }} data-testid="block-store">📦 持ち物にしまう</button>
+              <button className="btn ghost block" onClick={closeAll}>キャンセル</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {menu && !mode && (menuBook || menuFile) && (

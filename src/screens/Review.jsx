@@ -9,6 +9,7 @@ import { getDetail } from '../lib/dictionary.js';
 import FormTags from '../components/FormTags.jsx';
 import ConjTable from '../components/ConjTable.jsx';
 import SpeakButton from '../components/SpeakButton.jsx';
+import SpeedSwitch from '../components/SpeedSwitch.jsx';
 import Reading from '../components/Reading.jsx';
 import { loadAlwaysDetail, saveAlwaysDetail } from '../lib/detailPref.js';
 import { loadSettings } from '../lib/settings.js';
@@ -96,7 +97,7 @@ export default function Review({ filter, onExit }) {
           ← 終了
         </button>
         <h2 className="title">{filter.scope === 'due' ? '単語の復習' : '単語テスト'}</h2>
-        <span className="topbar-spacer" />
+        <SpeedSwitch className="in-topbar" />
       </header>
 
       <main className="content review">

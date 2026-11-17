@@ -30,9 +30,10 @@ export default function NotesScreen({ onBack }) {
                 <div className="note-time">{new Date(n.at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</div>
                 <ul className="notebook-lines static">
                   {n.lines.map((l, i) => (
-                    <li key={i} className="note-line shown"><span className="note-text">・{l.text}</span><Hanamaru size={28} /></li>
+                    <li key={i} className="note-line shown"><span className="note-text">・{l.text}</span><Hanamaru size={40} /></li>
                   ))}
                 </ul>
+                {n.diary && <p className="note-diary" data-testid="note-diary">📔 {n.diary}</p>}
                 {n.medalIds?.length > 0 && (
                   <div className="note-medals">
                     {n.medalIds.map((id) => medals[id] && <span key={id} className="note-medal">{medals[id].emoji} {medals[id].title}</span>)}

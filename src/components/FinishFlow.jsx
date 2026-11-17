@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Hanamaru from './Hanamaru.jsx';
 import { FarewellScene } from './StartGate.jsx';
 
-const LINE_STEP = 1000; // 1行ごとの間隔（ms）
+const LINE_STEP = 1900; // 1行ごとの間隔（ms）：筆で花丸を描く時間ぶん
 const LINE_START = 1300; // ノートが止まってから最初の行が出るまで（ms）
 
 function Confetti() {
@@ -26,22 +26,31 @@ function Confetti() {
   );
 }
 
-export function Medal({ medal, big = false }) {
+// メダル。medal.look = 色・飾りの派手さ（bronze / silver / gold / rainbow、deco で飾り）
+export function Medal({ medal, big = false, locked = false }) {
+  const look = (medal.look || 'gold').split(' ');
   return (
-    <div className={'medal' + (big ? ' big' : '')} data-testid="medal">
+    <div className={'medal' + (big ? ' big' : '') + (locked ? ' is-locked' : '')} data-testid="medal">
       <div className="medal-ribbon" aria-hidden="true" />
-      <div className="medal-disc"><span>{medal.emoji}</span></div>
-      <div className="medal-title">{medal.title}</div>
+      <div className={'medal-disc ' + look.join(' ')}>
+        {look.includes('deco') && !locked && <span className="medal-sparkle" aria-hidden="true">✦</span>}
+        <span className="medal-emoji">{locked ? '？' : medal.emoji}</span>
+      </div>
+      <div className="medal-title">{locked ? '？？？' : medal.title}</div>
     </div>
   );
 }
 
-// ③ 終了時の演出：達成ノート（ズームイン＋花丸）→ メダル獲得 → お見送り
+// ③ 終了時の演出：達成ノート（ズームイン＋筆で花丸）→ 自分で書く欄・一言日記 → メダル獲得 → お見送り
 // lines: [{text}] / medals: 今回新しく獲得したメダル / farewellChar: お見送りのキャラクター
-export default function FinishFlow({ lines, medals, farewellChar, onDone }) {
+// onSaveExtras({ ownLines, diary }): 自分で書いた内容を保存
+export default function FinishFlow({ lines, medals, farewellChar, onSaveExtras, onDone }) {
   const [stage, setStage] = useState('notebook'); // 'notebook' | 'medal' | 'bye'
   const [ready, setReady] = useState(false);
-  const total = LINE_START + lines.length * LINE_STEP + 400;
+  const [own, setOwn] = useState([]); // 自分で書いた「達成したこと」
+  const [draft, setDraft] = useState('');
+  const [diary, setDiary] = useState('');
+  const total = LINE_START + lines.length * LINE_STEP + 300;
   useEffect(() => {
     const t = window.setTimeout(() => setReady(true), total);
     return () => window.clearTimeout(t);
@@ -49,7 +58,18 @@ export default function FinishFlow({ lines, medals, farewellChar, onDone }) {
 
   if (stage === 'bye') return <FarewellScene char={farewellChar} onDone={onDone} />;
 
-  const next = () => setStage(stage === 'notebook' && medals.length > 0 ? 'medal' : 'bye');
+  const addOwn = () => {
+    const t = draft.trim();
+    if (!t) return;
+    setOwn((o) => [...o, t]);
+    setDraft('');
+  };
+  const next = () => {
+    const pending = draft.trim();
+    const ownLines = pending ? [...own, pending] : own; // 入力したまま「次へ」を押しても、書いた内容は残す
+    onSaveExtras?.({ ownLines, diary });
+    setStage(medals.length > 0 ? 'medal' : 'bye');
+  };
 
   if (stage === 'medal') {
     return (
@@ -76,10 +96,30 @@ export default function FinishFlow({ lines, medals, farewellChar, onDone }) {
             {lines.map((l, i) => (
               <li key={i} className="note-line" style={{ '--d': `${LINE_START + i * LINE_STEP}ms` }} data-testid="note-line">
                 <span className="note-text">・{l.text}</span>
-                <Hanamaru animate delay={LINE_START + i * LINE_STEP + 500} />
+                <Hanamaru animate delay={LINE_START + i * LINE_STEP + 450} />
+              </li>
+            ))}
+            {own.map((t, i) => (
+              <li key={`own-${i}`} className="note-line own-line shown" data-testid="own-line">
+                <span className="note-text">・{t}</span>
+                <Hanamaru animate delay={150} />
               </li>
             ))}
           </ul>
+
+          {ready && (
+            <div className="own-box" data-testid="own-box">
+              <label className="own-label" htmlFor="own-input">✏️ 自分で書く「達成したこと」</label>
+              <div className="own-row">
+                <input id="own-input" className="input" value={draft} maxLength={60} placeholder="例：映画を字幕なしで10分見た"
+                  onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addOwn()} data-testid="own-input" />
+                <button type="button" className="btn primary" onClick={addOwn} data-testid="own-add">登録</button>
+              </div>
+              <label className="own-label" htmlFor="diary-input">📔 一言日記</label>
+              <input id="diary-input" className="input" value={diary} maxLength={80} placeholder="今日の一言"
+                onChange={(e) => setDiary(e.target.value)} data-testid="diary-input" />
+            </div>
+          )}
         </div>
         <button className={'btn primary notebook-next' + (ready ? ' show' : '')} disabled={!ready} onClick={next} data-testid="notebook-next">
           {medals.length > 0 ? 'メダルを見る' : 'つぎへ'}

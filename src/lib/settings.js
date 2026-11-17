@@ -33,6 +33,7 @@ export const DEFAULT_SETTINGS = {
   colors: DEFAULT_COLORS,
   alwaysDetail: false, // 「詳しく見る」を最初から開く
   genreColors: {}, // ジャンルごとの既定の表紙色（自分で変えた色を覚える）
+  speechRate: 1, // 音声の速さ：0.75（ゆっくり）／1（ふつう）／1.25（はやい）
   muteGreeting: false, // 開始・終了のあいさつの声をオフ（テキストのみ）
   showReading: true, // 読み（拼音・ローマ字）を表示する
 };

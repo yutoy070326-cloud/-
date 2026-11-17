@@ -28,6 +28,7 @@ export default function Home({
   onOpenSettings,
   onOpenNotes,
   onOpenMedals,
+  onOpenStamps,
   onFinishStudy,
 }) {
   const now = useNow();
@@ -71,8 +72,8 @@ export default function Home({
           <button className="btn ghost bell" onClick={onOpenNotify} data-testid="open-notify" aria-label="通知設定">
             🔔{dueCount > 0 && <span className="bell-dot" aria-hidden="true" />}
           </button>
-          <button className="btn ghost" onClick={onOpenSettings} data-testid="open-settings" aria-label="設定">
-            ⚙
+          <button className="btn ghost bell" onClick={onOpenSettings} data-testid="open-settings" aria-label="設定">
+            ⚙️
           </button>
           <button className="btn ghost" onClick={onOpenLibrary} data-testid="open-library">
             ライブラリ <span className="badge">{shelfCount}</span>
@@ -110,6 +111,7 @@ export default function Home({
         <div className="home-actions">
           <button className="btn" onClick={onOpenNotes} data-testid="open-notes">📓 達成ノート</button>
           <button className="btn" onClick={onOpenMedals} data-testid="open-medals">🏅 メダル</button>
+          <button className="btn" onClick={onOpenStamps} data-testid="open-stamps">🎴 スタンプ</button>
           <button className="btn primary" onClick={onFinishStudy} data-testid="finish-study">🌙 学習を終える</button>
         </div>
 

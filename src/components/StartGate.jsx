@@ -3,6 +3,7 @@ import Character from './Characters.jsx';
 import { pickGreeting, timeOfDay } from '../lib/greetings.js';
 import { speak, speechSupported } from '../lib/speech.js';
 import { loadSettings } from '../lib/settings.js';
+import { langName } from '../lib/storyAI.js';
 
 // ① スタート画面：「学習を開始する」のトグルをONにすると、開始時演出が始まる
 export function StartGate({ onStart }) {
@@ -39,6 +40,7 @@ function Bubble({ g }) {
       <div className="bubble-text" lang={g.lang} dir={g.lang === 'ar' ? 'rtl' : undefined}>{g.text}</div>
       {g.pron && <div className="bubble-pron">{g.pron.text}</div>}
       {g.gloss && <div className="bubble-gloss">{g.gloss}</div>}
+      <div className="bubble-lang" data-testid="greeting-lang">{langName(g.lang)}のあいさつ</div>
     </div>
   );
 }
