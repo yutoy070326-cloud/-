@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import { tokenize, sentenceAround } from '../lib/tokenize.js';
 import { findRange, lookupWord } from '../lib/dictionary.js';
+import { loadAlwaysDetail, saveAlwaysDetail } from '../lib/detailPref.js';
 import { translateSentences, translateSelection } from '../lib/translate.js';
 import { addToWordbook, upsertMaterial } from '../lib/storage.js';
 import TitleSheet from '../components/TitleSheet.jsx';
@@ -56,6 +57,8 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
   //  word : { id, kind:'word', hid, anchorTop, anchorBottom, anchorX }（本文内に出る小窓）
   //  range: { id, kind:'range', text, result|null, card:'bottom'|'top' }（画面固定カード）
   const [popup, setPopup] = useState(null);
+  const [alwaysDetail, setAlwaysDetail] = useState(loadAlwaysDetail); // 「いつも詳しく」設定
+  const [openDetailId, setOpenDetailId] = useState(null); // 「詳しく見る」を開いた小窓の id
   const [toast, setToast] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -358,7 +361,7 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
     el.style.top = `${top}px`;
     el.style.left = `${left}px`;
     el.style.visibility = 'visible';
-  }, [popup, popupHl?.entry]);
+  }, [popup, popupHl?.entry, openDetailId, alwaysDetail]);
 
   // ---- トースト ----
   const toastTimer = useRef(null);
@@ -571,11 +574,49 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
                   <div className="popup-pos">{popupHl.entry.pos}</div>
                   <div className="popup-meaning">{popupHl.entry.meaning}</div>
                   {popupHl.entry.conj && <div className="popup-conj">{popupHl.entry.conj}</div>}
+                  {popupHl.entry.more?.length > 0 && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      {alwaysDetail || openDetailId === popup.id ? (
+                        <div className="popup-more">
+                          <div className="popup-more-title">ほかの意味・使い方</div>
+                          {popupHl.entry.more.map((m, i) => (
+                            <div key={i} className="popup-more-item">
+                              <div className="popup-more-meaning">{m.meaning}</div>
+                              {m.usage && <div className="popup-more-usage">{m.usage}</div>}
+                              {m.example && <div className="popup-more-ex">{m.example}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                      {!alwaysDetail && (
+                        <button
+                          type="button"
+                          className="popup-more-btn"
+                          onClick={() => setOpenDetailId((id) => (id === popup.id ? null : popup.id))}
+                        >
+                          {openDetailId === popup.id ? '閉じる ▲' : '詳しく見る ▼'}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="popup-loading">調べています…</div>
               )}
-              <div className="popup-foot">タップで閉じる</div>
+              <div className="popup-foot">
+                <label className="popup-always" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={alwaysDetail}
+                    onChange={(e) => {
+                      setAlwaysDetail(e.target.checked);
+                      saveAlwaysDetail(e.target.checked);
+                    }}
+                  />
+                  いつも詳しく表示
+                </label>
+                <span>タップで閉じる</span>
+              </div>
             </div>
           )}
         </article>

@@ -189,6 +189,43 @@ const RAW = {
   ],
 };
 
+
+// ---- 詳細（他の意味・用法）----
+// 初級者には出さず、ポップアップの「詳しく見る」を開いた人だけに見せる。
+// キーは「言語:原形」。本番の辞書APIでは複数の語義が返ってくる部分に当たる。
+// 各項目: { meaning: 別の意味, usage: 用法のヒント, example: 例文 }
+const EXTRA = {
+  'en:make': [
+    { meaning: '（お金を）稼ぐ', usage: 'make money / make a living', example: 'She makes a good living as a designer.' },
+    { meaning: '〜させる（使役）', usage: 'make + 人 + 動詞の原形', example: 'The movie made me cry.' },
+  ],
+  'en:catch': [
+    { meaning: '（病気に）かかる', usage: 'catch a cold', example: 'I caught a cold last week.' },
+    { meaning: '聞き取る、理解する', usage: 'I didn\'t catch that.', example: 'Sorry, I didn\'t catch your name.' },
+  ],
+  'en:leave': [
+    { meaning: '〜のままにしておく', usage: 'leave + 目的語 + 状態', example: 'Please leave the door open.' },
+    { meaning: '休暇', usage: '名詞: on leave', example: 'He is on leave until Monday.' },
+  ],
+  'en:work': [
+    { meaning: '（機械・方法が）うまくいく、動く', usage: 'It works. / That didn\'t work.', example: 'The new plan really works.' },
+    { meaning: '作品', usage: '名詞: a work of art', example: 'This is his best work.' },
+  ],
+  'en:settle': [
+    { meaning: '解決する、決着をつける', usage: 'settle a problem', example: 'They settled the dispute quickly.' },
+    { meaning: '定住する', usage: 'settle in + 場所', example: 'She settled in Kyoto.' },
+  ],
+  'en:check': [
+    { meaning: '小切手；（レストランの）勘定書', usage: '名詞: Check, please.', example: 'Could we have the check, please?' },
+  ],
+  'en:stay': [
+    { meaning: '〜のままでいる', usage: 'stay + 形容詞', example: 'Stay calm.' },
+  ],
+  'en:share': [
+    { meaning: '分け前、割り当て；シェア', usage: '名詞: a share of the profit', example: 'Everyone gets an equal share.' },
+  ],
+};
+
 // ---- インデックス作成 ----
 const INDEX = {}; // lang -> Map(normalizedForm -> entry)
 const MAX_PHRASE_WORDS = {};
@@ -201,7 +238,7 @@ for (const [lang, rows] of Object.entries(RAW)) {
   const map = new Map();
   let maxWords = 1;
   for (const [forms, lemma, pos, meaning, conj] of rows) {
-    const entry = { lemma, pos, meaning, conj };
+    const entry = { lemma, pos, meaning, conj, more: EXTRA[`${lang}:${lemma}`] ?? [] };
     for (const f of forms.split('|')) {
       const key = normalizeKey(f);
       if (!map.has(key)) map.set(key, entry);
@@ -258,6 +295,7 @@ export async function lookupWord(text, lang, context = '') {
     pos: '—',
     meaning: '（モック辞書に未登録）',
     conj: '',
+    more: [],
     found: false,
     context,
   };
