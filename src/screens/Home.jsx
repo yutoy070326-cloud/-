@@ -26,6 +26,9 @@ export default function Home({
   onShowTutorial,
   onOpenNotify,
   onOpenSettings,
+  onOpenNotes,
+  onOpenMedals,
+  onFinishStudy,
 }) {
   const now = useNow();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -104,6 +107,12 @@ export default function Home({
           {dueCount > 0 && <span className="review-cta-badge">{dueCount}</span>}
         </button>
 
+        <div className="home-actions">
+          <button className="btn" onClick={onOpenNotes} data-testid="open-notes">📓 達成ノート</button>
+          <button className="btn" onClick={onOpenMedals} data-testid="open-medals">🏅 メダル</button>
+          <button className="btn primary" onClick={onFinishStudy} data-testid="finish-study">🌙 学習を終える</button>
+        </div>
+
         <div className="mode-cards">
           <button
             className={'mode-card' + (mode === 'paste' ? ' on' : '')}
@@ -129,8 +138,10 @@ export default function Home({
 
         {mode === 'ai' && (
           <section className="panel">
-            <label className="field-label">言語</label>
-            <Chips options={LANGUAGES} value={lang} onChange={setLang} />
+            <label className="field-label" htmlFor="ai-lang">学習する言語</label>
+            <select id="ai-lang" className="input" value={lang} onChange={(e) => setLang(e.target.value)}>
+              {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
+            </select>
             <label className="field-label">レベル</label>
             <Chips options={LEVELS} value={level} onChange={setLevel} />
             <label className="field-label">ジャンル</label>

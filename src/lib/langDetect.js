@@ -11,7 +11,8 @@ const STOP = {
 
 const count = (s, re) => (s.match(re) ?? []).length;
 
-export function detectLanguage(text) {
+// current: いま選んでいる言語。漢字だけの文は、日本語を選んでいる間は日本語のまま、それ以外は中国語とみなす
+export function detectLanguage(text, current) {
   const s = String(text ?? '').trim();
   if (!s) return null;
   const kana = count(s, /[぀-ヿㇰ-ㇿ]/g);
@@ -25,7 +26,7 @@ export function detectLanguage(text) {
   if (arab > 0 && arab >= latin) return 'ar';
   if (kana > 0) return 'ja'; // かなが1文字でもあれば日本語
   if (hangul > 0 && hangul >= han) return 'ko';
-  if (han > 0 && latin === 0) return null; // 漢字だけは日本語か中国語か決められない
+  if (han > 0 && latin === 0) return current === 'ja' ? 'ja' : 'zh'; // かなが無い漢字だけの文は中国語（日本語の文にはほぼ必ずかなが入る）
   if (latin < 3) return null;
 
   const lower = s.toLowerCase();

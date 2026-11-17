@@ -552,6 +552,11 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
                           .map(renderToken)}
                       </div>
                       <div className="sent-trans" lang="ja" data-testid="sent-trans">
+                        <SpeakButton
+                          className="sent-speak"
+                          lang={lang}
+                          text={para.tokens.filter((_, i) => para.starts[i] >= st.start && para.starts[i] < st.end).map((t) => t.text).join('').trim()}
+                        />
                         {st.ja ?? <span className="sent-trans-note">（モック未対応）</span>}
                       </div>
                     </div>
@@ -650,7 +655,10 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
           <div className="popup-pos">
             選択範囲の翻訳{range.result?.kind === 'sentence' ? '（文）' : '（フレーズ）'}
           </div>
-          <div className="popup-src">{range.text}</div>
+          <div className="popup-src">
+            {range.text}
+            <SpeakButton className="range-speak" lang={lang} text={range.text} />
+          </div>
           {range.result ? (
             <>
               <div className="popup-meaning">{range.result.text}</div>

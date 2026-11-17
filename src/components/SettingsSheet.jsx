@@ -68,6 +68,14 @@ export default function SettingsSheet({ onClose }) {
           </label>
         </section>
 
+        <section className="set-section">
+          <h4 className="set-h">開始・終了のあいさつ</h4>
+          <label className="set-row">
+            <span>あいさつの声を出さない（テキストのみ）</span>
+            <input type="checkbox" checked={st.muteGreeting} onChange={(e) => update({ muteGreeting: e.target.checked })} data-testid="set-mute-greeting" />
+          </label>
+        </section>
+
         <div className="sheet-actions">
           <button className="btn primary" onClick={onClose}>閉じる</button>
         </div>

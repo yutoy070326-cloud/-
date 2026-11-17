@@ -12,6 +12,11 @@ import BookSetup from './screens/BookSetup.jsx';
 import BookDetail from './screens/BookDetail.jsx';
 import Compose from './screens/Compose.jsx';
 import Tutorial from './components/Tutorial.jsx';
+import { StartGate, IntroScene } from './components/StartGate.jsx';
+import FinishFlow from './components/FinishFlow.jsx';
+import NotesScreen from './screens/NotesScreen.jsx';
+import MedalAlbum from './screens/MedalAlbum.jsx';
+import { startSession, loadSession, clearSession, oppositeChar, computeSummary, buildLines, newMedals, saveFinish } from './lib/diary.js';
 import { shouldShowTutorial } from './lib/tutorial.js';
 import { loadWordbook, loadMaterials, loadBooks, loadFiles, migrateLibrary, touchMaterial } from './lib/storage.js';
 import { requestPersistentStorage } from './lib/backup.js';
@@ -39,6 +44,25 @@ export default function App() {
   const showTutorial = () => setTutorial('again');
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // スタート画面 → 開始演出 → アプリ → （学習を終える）→ 達成ノート・お見送り → スタート画面
+  const [phase, setPhase] = useState('gate'); // 'gate' | 'intro' | 'app' | 'finish'
+  const [char, setChar] = useState(null); // 開始時に出たキャラクター（'boy' | 'girl'）
+  const [finish, setFinish] = useState(null); // { lines, medals, farewellChar }
+  const begin = () => {
+    const s = startSession();
+    setChar(s.char);
+    setPhase('intro');
+  };
+  const endStudy = () => {
+    const s = loadSession() ?? { startedAt: new Date().setHours(0, 0, 0, 0), char: char ?? 'boy' };
+    const sum = computeSummary(s.startedAt);
+    const lines = buildLines(sum);
+    const medals = newMedals(sum);
+    saveFinish(lines, medals); // 押した時点で保存（演出の途中で閉じても残る）
+    setFinish({ lines, medals, farewellChar: oppositeChar(s.char) }); // 開始時と反対のキャラクターでお見送り
+    setPhase('finish');
+  };
 
   // 通知：Service Worker 登録 → 起動時・30秒ごと・画面復帰時に「出すべき通知」を判定
   useEffect(() => {
@@ -95,6 +119,9 @@ export default function App() {
           onShowTutorial={showTutorial}
           onOpenNotify={() => setNotifyOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
+          onOpenNotes={() => setScreen('notes')}
+          onOpenMedals={() => setScreen('medals')}
+          onFinishStudy={endStudy}
           onDataRestored={(c) => {
             setWordCount(c.words);
             refreshShelf();
@@ -223,6 +250,23 @@ export default function App() {
       )}
       {notifyOpen && <NotifySettings onClose={() => setNotifyOpen(false)} />}
       {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
+      {screen === 'notes' && <NotesScreen onBack={() => setScreen('home')} />}
+      {screen === 'medals' && <MedalAlbum onBack={() => setScreen('home')} />}
+      {phase === 'gate' && <StartGate onStart={begin} />}
+      {phase === 'intro' && <IntroScene char={char} onDone={() => setPhase('app')} />}
+      {phase === 'finish' && finish && (
+        <FinishFlow
+          lines={finish.lines}
+          medals={finish.medals}
+          farewellChar={finish.farewellChar}
+          onDone={() => {
+            clearSession();
+            setFinish(null);
+            setScreen('home');
+            setPhase('gate');
+          }}
+        />
+      )}
       {tutorial && <Tutorial onClose={() => setTutorial(null)} />}
     </div>
   );

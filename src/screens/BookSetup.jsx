@@ -36,7 +36,7 @@ export default function BookSetup({ onBack, onRead, onBooksChanged, onMaterialsC
   const onTitle = (v) => {
     setTitle(v);
     if (langTouched) return;
-    const code = detectLanguage(v);
+    const code = detectLanguage(v, lang);
     if (code && code !== lang && PASTE_LANGUAGES.some((l) => l.code === code)) {
       setLang(code);
       setAutoLang(code);
@@ -107,6 +107,7 @@ export default function BookSetup({ onBack, onRead, onBooksChanged, onMaterialsC
                     {PASTE_LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
                   </select>
                   {autoLang && <p className="pg-note auto-lang" role="status" data-testid="auto-lang">題名から「{langName(autoLang)}」を選びました</p>}
+                  <BookStyleFields compact value={style} title={title} onChange={setStyle} />
                 </div>
               </div>
               <div className="pg pg-right">
@@ -120,7 +121,6 @@ export default function BookSetup({ onBack, onRead, onBooksChanged, onMaterialsC
                   <label className="mini-label" htmlFor="book-goal">1日の目標ページ数</label>
                   <input id="book-goal" className="input" type="number" inputMode="numeric" min={1}
                     value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="例：5" />
-                  <BookStyleFields value={style} title={title} onChange={setStyle} />
                   {days && <p className="pg-note" data-testid="book-days">全{total}ページ・1日{goal}ページで約{days}日</p>}
                 </div>
               </div>

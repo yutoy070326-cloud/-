@@ -3,7 +3,7 @@
 import { newSrs, normalizeWord, applyPractice } from './srs.js';
 import { healSources, textKey } from './folders.js';
 import { recordStudy } from './studyLog.js';
-import { genreOf, isColor } from './bookStyle.js';
+import { genreOf, isColor, rememberGenreColor } from './bookStyle.js';
 
 const KEY = 'lingo-reader:wordbook:v1';
 const MKEY = 'lingo-reader:materials:v1';
@@ -298,6 +298,7 @@ export function createBook({ title, lang, startPage, endPage, dailyGoal, genre, 
   };
   const next = [...list, book];
   persist(next, BKEY);
+  if (book.genre && book.color) rememberGenreColor(book.genre, book.color); // 選んだ色を、そのジャンルの既定色にする
   return { ok: true, book, list: next };
 }
 
@@ -519,6 +520,7 @@ export function updateBook(id, { title, lang, startPage, endPage, dailyGoal, gen
   if (updated.lastPage != null && (updated.lastPage < start || updated.lastPage > end)) delete updated.lastPage;
   const next = list.map((b) => (b.id === id ? updated : b));
   persist(next, BKEY);
+  if (updated.genre && color && updated.color) rememberGenreColor(updated.genre, updated.color);
   // ページ教材の題名（「題名 p.N」）と言語を合わせる
   const mats = loadMaterials().map((m) => {
     if (m.bookId !== id) return m;

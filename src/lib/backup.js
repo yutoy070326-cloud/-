@@ -2,6 +2,7 @@
 // マイ教材・カスタムフォルダー）を1つのファイルにまとめる。
 
 import { loadWordbook, loadMaterials, loadFolders, loadBooks, loadFiles, migrateLibrary, KEYS } from './storage.js';
+import { loadNotes, loadMedals, NOTES_KEY, MEDALS_KEY } from './diary.js';
 
 export const BACKUP_APP = 'lingo-reader';
 export const BACKUP_VERSION = 1;
@@ -11,7 +12,7 @@ export function buildBackup(now = new Date()) {
     app: BACKUP_APP,
     version: BACKUP_VERSION,
     exportedAt: now.toISOString(),
-    data: { words: loadWordbook(), materials: loadMaterials(), folders: loadFolders(), books: loadBooks(), files: loadFiles() },
+    data: { words: loadWordbook(), materials: loadMaterials(), folders: loadFolders(), books: loadBooks(), files: loadFiles(), notes: loadNotes(), medals: loadMedals() },
   };
 }
 
@@ -42,19 +43,21 @@ export function parseBackup(text) {
   const folders = Array.isArray(d.folders) ? d.folders.filter((f) => isObj(f) && f.id && f.name) : null;
   const files = Array.isArray(d.files) ? d.files.filter((f) => isObj(f) && f.id && f.name) : [];
   const books = Array.isArray(d.books) ? d.books.filter((b) => isObj(b) && b.id && b.title) : [];
+  const notes = Array.isArray(d.notes) ? d.notes.filter((n) => isObj(n) && n.id && Array.isArray(n.lines)) : [];
+  const medals = Array.isArray(d.medals) ? d.medals.filter((m) => isObj(m) && m.id) : [];
   if (!words || !materials || !folders) {
     return { ok: false, error: 'バックアップの内容が壊れています' };
   }
   return {
     ok: true,
-    backup: { ...json, data: { words, materials, folders, books, files } },
+    backup: { ...json, data: { words, materials, folders, books, files, notes, medals } },
     counts: { words: words.length, materials: materials.length, folders: folders.length, books: books.length },
   };
 }
 
 // 検証済みのバックアップで、現在のデータを完全に置き換える
 export function restoreBackup(backup) {
-  const { words, materials, folders, books = [], files = [] } = backup.data;
+  const { words, materials, folders, books = [], files = [], notes = [], medals = [] } = backup.data;
   try {
     localStorage.setItem(KEYS.words, JSON.stringify(words));
     localStorage.setItem(KEYS.materials, JSON.stringify(materials));
@@ -63,6 +66,10 @@ export function restoreBackup(backup) {
     else localStorage.removeItem(KEYS.books);
     if (files.length) localStorage.setItem(KEYS.files, JSON.stringify(files));
     else localStorage.removeItem(KEYS.files);
+    if (notes.length) localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+    else localStorage.removeItem(NOTES_KEY);
+    if (medals.length) localStorage.setItem(MEDALS_KEY, JSON.stringify(medals));
+    else localStorage.removeItem(MEDALS_KEY);
   } catch {
     return { ok: false, error: '保存できませんでした（ブラウザの保存容量・設定を確認してください）' };
   }

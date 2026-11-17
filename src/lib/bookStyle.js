@@ -1,3 +1,5 @@
+import { loadSettings, saveSettings } from './settings.js';
+
 // 本の見た目：ジャンルと表紙（背表紙）の色。
 // ジャンルを選ぶと色が自動で決まり、自分で色を選んだときだけ、その色を使う。
 export const BOOK_GENRES = [
@@ -24,7 +26,30 @@ const hash = (s) => { let h = 7; for (let i = 0; i < s.length; i++) h = (h * 31 
 export const genreOf = (id) => BOOK_GENRES.find((g) => g.id === id) ?? null;
 export const isColor = (c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
 
-// 自動の色（ジャンルがあればジャンル色、なければ題名から決めた色）
-export const autoBookColor = (book) => genreOf(book.genre)?.color ?? FALLBACK[hash(String(book.title ?? '')) % FALLBACK.length];
+const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+
+// ジャンルごとの「いまの既定色」（自分で変えた色があればそれ、なければ初期色）
+export function genreColorMap() {
+  const saved = loadSettings().genreColors ?? {};
+  return Object.fromEntries(BOOK_GENRES.map((g) => [g.id, isColor(saved[g.id]) ? saved[g.id] : g.color]));
+}
+
+// ジャンルを選んで色も変えたときに呼ぶ：その色を、そのジャンルの既定色として覚える。
+// 他のジャンルの既定色と被ったら、そちらを、どのジャンルとも被らない色に付け替える。
+export function rememberGenreColor(genre, color) {
+  if (!genreOf(genre) || !isColor(color)) return;
+  const map = genreColorMap();
+  map[genre] = color;
+  for (const g of BOOK_GENRES) {
+    if (g.id === genre || !same(map[g.id], color)) continue;
+    const used = Object.values(map);
+    const free = BOOK_COLORS.find((c) => !used.some((u) => same(u, c)));
+    if (free) map[g.id] = free;
+  }
+  saveSettings({ genreColors: map });
+}
+
+// 自動の色（ジャンルがあればそのジャンルの既定色、なければ題名から決めた色）
+export const autoBookColor = (book) => (book.genre && genreOf(book.genre) ? genreColorMap()[book.genre] : FALLBACK[hash(String(book.title ?? '')) % FALLBACK.length]);
 // 実際に使う色（自分で選んだ色が最優先）
 export const bookColor = (book) => (isColor(book.color) ? book.color : autoBookColor(book));

@@ -8,7 +8,9 @@
 - UI文言は日本語。変更時は既存の操作感（タップ／長押し／選択翻訳）を壊さないこと
 
 ## 守るルール
-- 永続化は localStorage（`lingo-reader:*:v1` はバックアップ対象）。`lingo-reader-tutorial:v1` / `lingo-reader-notify:v1` / `lingo-reader-study:v1` / `lingo-reader-settings:v1`（色分け・詳しく見る等の設定。`src/lib/settings.js`）は端末設定でバックアップ対象外（意図的にハイフン区切り）
+- 永続化は localStorage（`lingo-reader:*:v1` はバックアップ対象）。`lingo-reader-tutorial:v1` / `lingo-reader-notify:v1` / `lingo-reader-study:v1` / `lingo-reader-settings:v1`（色分け・詳しく見る等の設定。`src/lib/settings.js`）/ `lingo-reader-session:v1`（今回の学習の開始時刻とキャラクター）は端末設定でバックアップ対象外（意図的にハイフン区切り）
+- 達成ノート・メダルは `lingo-reader:notes:v1` / `lingo-reader:medals:v1`（バックアップ対象。`src/lib/diary.js`）
+- 起動時はスタート画面（トグル）→開始演出。「学習を終える」で達成ノート→メダル→お見送り。Playwright で確認するときは `gate-switch` をクリックし `intro-skip` で進める
 - 復習ロジックは `src/lib/srs.js` に集約（間隔 20分/1時間/1日/1週間/1か月、step5 で習得）
 - 辞書・翻訳・AI物語は現状モック（`dictionary.js` `translate.js` `storyAI.js`）。実APIに差し替える場合も関数の形を維持
 - 本物のWebプッシュは未実装（サーバー＋VAPID が必要）。現状は Service Worker の showNotification

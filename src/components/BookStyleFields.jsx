@@ -3,18 +3,18 @@ import { BOOK_GENRES, BOOK_COLORS, genreOf, autoBookColor } from '../lib/bookSty
 
 // 本のジャンルと表紙の色。ジャンルで色が自動で決まる。自分で色を選んだときだけ、その色になる。
 // value: { genre: id|'' , color: '#rrggbb'|'' }（'' ＝ 自動）, title: 自動色の計算に使う
-export default function BookStyleFields({ value, title, onChange }) {
+export default function BookStyleFields({ value, title, onChange, compact = false }) {
   const auto = autoBookColor({ genre: value.genre, title });
   const set = (patch) => onChange({ ...value, ...patch });
   return (
-    <div className="book-style" data-testid="book-style">
-      <label className="field-label" htmlFor="bs-genre">ジャンル</label>
+    <div className={'book-style' + (compact ? ' compact' : '')} data-testid="book-style">
+      <label className={compact ? 'mini-label' : 'field-label'} htmlFor="bs-genre">ジャンル</label>
       <select id="bs-genre" className="input" value={value.genre || ''} onChange={(e) => set({ genre: e.target.value })} data-testid="bs-genre">
         <option value="">指定しない</option>
         {BOOK_GENRES.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
       </select>
 
-      <label className="field-label">表紙の色</label>
+      <label className={compact ? 'mini-label' : 'field-label'}>表紙の色</label>
       <div className="bs-colors" role="radiogroup" aria-label="表紙の色">
         <button
           type="button"

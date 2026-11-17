@@ -56,7 +56,7 @@ export default function PasteForm({ fixedKind, onStart, onOpenBookNew, onMateria
   // ---- 言語の自動判定 ----
   const detect = (value) => {
     if (langTouched) return;
-    const code = detectLanguage(value);
+    const code = detectLanguage(value, lang);
     if (code && code !== lang && PASTE_LANGUAGES.some((l) => l.code === code)) {
       setLang(code);
       setAutoLang(code);
@@ -121,8 +121,10 @@ export default function PasteForm({ fixedKind, onStart, onOpenBookNew, onMateria
         </>
       )}
 
-      <label className="field-label">学習する言語</label>
-      <Chips options={PASTE_LANGUAGES} value={lang} onChange={pickLang} />
+      <label className="field-label" htmlFor="paste-lang">学習する言語</label>
+      <select id="paste-lang" className="input" value={lang} onChange={(e) => pickLang(e.target.value)} data-testid="paste-lang">
+        {PASTE_LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
+      </select>
       {autoLang && (
         <p className="auto-lang" role="status" data-testid="auto-lang">
           入力から「{langName(autoLang)}」を自動で選びました（変更できます）
@@ -131,13 +133,12 @@ export default function PasteForm({ fixedKind, onStart, onOpenBookNew, onMateria
 
       {(kind === 'exam' || kind === 'other') && (
         <>
-          <label className="field-label">ファイル（入れる場所）</label>
+          <label className="field-label" htmlFor="file-sel">ファイル（入れる場所）</label>
           {kindFiles.length > 0 && (
-            <Chips
-              options={[...kindFiles.map((f) => ({ code: f.id, label: `📁 ${f.name}` })), { code: NEW_ITEM, label: '＋ 新しいファイル' }]}
-              value={fileSel || kindFiles[0].id}
-              onChange={setFileSel}
-            />
+            <select id="file-sel" className="input" value={fileSel || kindFiles[0].id} onChange={(e) => setFileSel(e.target.value)} data-testid="file-sel">
+              {kindFiles.map((f) => <option key={f.id} value={f.id}>📁 {f.name}</option>)}
+              <option value={NEW_ITEM}>＋ 新しいファイル</option>
+            </select>
           )}
           {addingFile && (
             <input id="file-new" className="input" value={fileNew} maxLength={40} {...titleHints}
@@ -148,8 +149,10 @@ export default function PasteForm({ fixedKind, onStart, onOpenBookNew, onMateria
 
       {kind === 'article' && (
         <>
-          <label className="field-label">記事のトピック</label>
-          <Chips options={topicOptions.map((t) => ({ code: t, label: t }))} value={topic} onChange={setTopic} />
+          <label className="field-label" htmlFor="topic-sel">記事のトピック</label>
+          <select id="topic-sel" className="input" value={topic} onChange={(e) => setTopic(e.target.value)}>
+            {topicOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
           {topic === 'その他' && (
             <input id="topic-custom" className="input" value={topicCustom} maxLength={20}
               onChange={(e) => setTopicCustom(e.target.value)} placeholder="トピックを入力（例：旅行）" />
@@ -162,13 +165,12 @@ export default function PasteForm({ fixedKind, onStart, onOpenBookNew, onMateria
 
       {kind === 'lyrics' && (
         <>
-          <label className="field-label">アーティスト</label>
+          <label className="field-label" htmlFor="artist-sel">アーティスト</label>
           {artists.length > 0 && (
-            <Chips
-              options={[...artists.map((a) => ({ code: a, label: a })), { code: NEW_ITEM, label: '＋ 新しいアーティスト' }]}
-              value={artistSel}
-              onChange={setArtistSel}
-            />
+            <select id="artist-sel" className="input" value={artistSel || NEW_ITEM} onChange={(e) => setArtistSel(e.target.value)}>
+              {artists.map((a) => <option key={a} value={a}>{a}</option>)}
+              <option value={NEW_ITEM}>＋ 新しいアーティスト</option>
+            </select>
           )}
           {addingArtist && (
             <input id="artist-input" className="input" value={artistNew} maxLength={60} {...titleHints}

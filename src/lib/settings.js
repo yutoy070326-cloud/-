@@ -32,6 +32,8 @@ export const DEFAULT_SETTINGS = {
   colorByPos: true, // 品詞で色分けする
   colors: DEFAULT_COLORS,
   alwaysDetail: false, // 「詳しく見る」を最初から開く
+  genreColors: {}, // ジャンルごとの既定の表紙色（自分で変えた色を覚える）
+  muteGreeting: false, // 開始・終了のあいさつの声をオフ（テキストのみ）
   showReading: true, // 読み（拼音・ローマ字）を表示する
 };
 
