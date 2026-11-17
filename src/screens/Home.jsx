@@ -25,6 +25,7 @@ export default function Home({
   onMaterialsChanged,
   onShowTutorial,
   onOpenNotify,
+  onOpenSettings,
 }) {
   const now = useNow();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -66,6 +67,9 @@ export default function Home({
         <div className="topbar-actions">
           <button className="btn ghost bell" onClick={onOpenNotify} data-testid="open-notify" aria-label="通知設定">
             🔔{dueCount > 0 && <span className="bell-dot" aria-hidden="true" />}
+          </button>
+          <button className="btn ghost" onClick={onOpenSettings} data-testid="open-settings" aria-label="設定">
+            ⚙
           </button>
           <button className="btn ghost" onClick={onOpenLibrary} data-testid="open-library">
             ライブラリ <span className="badge">{shelfCount}</span>

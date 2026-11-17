@@ -5,6 +5,17 @@
 
 const norm = (s) => String(s).toLowerCase().replace(/[’‘]/g, "'").trim();
 
+// tags: 何形か・何人称かのラベル（ポップアップで色分けして表示）。tone は色の種類
+// tense: 活用表の1つの時制 { id, label, rows, hit }。時制を増やすときは tenses に足していく
+function result(tags, tense, note) {
+  return {
+    form: tags.length ? tags.map((t) => t.label).join('・') : null,
+    formTags: tags,
+    table: tense ? { title: '活用表', tenses: [tense], note } : null,
+  };
+}
+const personTone = (i) => `p${(i % 3) + 1}`;
+
 // ---------- 英語 ----------
 function enTriple(entry) {
   const parts = String(entry.conj || '').split(' – ').map((s) => s.trim());
@@ -17,32 +28,32 @@ function enInfo(entry, surface) {
   const isVerb = /動詞/.test(entry.pos);
   if (!isVerb) {
     // 名詞：原形と違い、s で終わる語は複数形とみなす
-    if (/名詞/.test(entry.pos) && surface !== lemma && /s$/.test(surface)) return { form: '複数形', table: null };
-    return { form: null, table: null };
+    if (/名詞/.test(entry.pos) && surface !== lemma && /s$/.test(surface)) return result([{ label: '複数形', tone: 'plural' }], null);
+    return result([], null);
   }
   const triple = enTriple(entry);
-  if (!triple) return { form: null, table: null };
+  if (!triple) return result([], null);
   const past = norm(triple[1]);
   const pp = norm(triple[2]);
   // 句動詞（waking up など）は最初の語で -ing を判定する
   const ing = forms.find((f) => /ing$/.test(f.split(' ')[0]) && f !== lemma);
   const third = forms.find((f) => f !== lemma && f !== past && f !== pp && f !== ing);
 
-  let form;
-  if (surface === lemma) form = '原形（現在形）';
-  else if (surface === past && surface === pp) form = '過去形・過去分詞';
-  else if (surface === past) form = '過去形';
-  else if (surface === pp) form = '過去分詞';
-  else if (surface === ing) form = '現在進行形（be + -ing）';
-  else if (surface === third) form = '三人称単数現在形（he／she／it）';
-  else form = null;
+  let tags;
+  if (surface === lemma) tags = [{ label: '原形（現在形）', tone: 'base' }];
+  else if (surface === past && surface === pp) tags = [{ label: '過去形', tone: 'past' }, { label: '過去分詞', tone: 'pp' }];
+  else if (surface === past) tags = [{ label: '過去形', tone: 'past' }];
+  else if (surface === pp) tags = [{ label: '過去分詞', tone: 'pp' }];
+  else if (surface === ing) tags = [{ label: '現在進行形（be + -ing）', tone: 'prog' }];
+  else if (surface === third) tags = [{ label: '三人称単数現在形（he／she／it）', tone: 'third' }];
+  else tags = [];
 
   const rows = [{ label: '原形', form: triple[0] }];
   if (third) rows.push({ label: '三人称単数現在', form: third });
   rows.push({ label: '過去形', form: triple[1] }, { label: '過去分詞', form: triple[2] });
   if (ing) rows.push({ label: '現在進行形（-ing）', form: ing });
   const hit = rows.map((r, i) => (norm(r.form) === surface ? i : -1)).filter((i) => i >= 0);
-  return { form, table: { title: '活用表', rows, hit } };
+  return result(tags, { id: 'forms', label: '主な語形', rows, hit });
 }
 
 // ---------- スペイン語（直説法現在） ----------
@@ -85,17 +96,14 @@ function esTable(entry) {
 function esInfo(entry, surface) {
   const lemma = norm(entry.lemma);
   const forms = esTable(entry);
-  if (!forms) return { form: null, table: null };
+  if (!forms) return result([], null);
   const rows = forms.map((f, i) => ({ label: ES_PERSONS[i], form: f }));
   const hit = forms.map((f, i) => (norm(f) === surface ? i : -1)).filter((i) => i >= 0);
-  let form = null;
-  if (surface === lemma) form = '不定詞（原形）';
-  else if (hit.length) form = '直説法現在・' + hit.map((i) => ES_PERSONS[i]).join('／');
-  else if (/(ando|iendo)$/.test(surface)) form = '現在分詞（ジェルンディオ）';
-  return {
-    form,
-    table: { title: '直説法現在形の活用', rows, hit, note: '現在形のみ。ほかの時制は未対応です' },
-  };
+  let tags = [];
+  if (surface === lemma) tags = [{ label: '不定詞（原形）', tone: 'base' }];
+  else if (hit.length) tags = [{ label: '直説法現在', tone: 'tense' }, ...hit.map((i) => ({ label: ES_PERSONS[i], tone: personTone(i) }))];
+  else if (/(ando|iendo)$/.test(surface)) tags = [{ label: '現在分詞（ジェルンディオ）', tone: 'prog' }];
+  return result(tags, { id: 'present', label: '直説法現在', rows, hit }, '現在形のみ。ほかの時制は未対応です');
 }
 
 // ---------- フランス語（直説法現在） ----------
@@ -118,24 +126,22 @@ function frInfo(entry, surface) {
     const stem = lemma.slice(0, -2);
     forms = FR_ER.map((e) => stem + e);
   }
-  if (!forms) return { form: null, table: null };
+  if (!forms) return result([], null);
   const rows = forms.map((f, i) => ({ label: FR_PERSONS[i], form: f }));
   const hit = forms.map((f, i) => (norm(f) === surface ? i : -1)).filter((i) => i >= 0);
-  let form = null;
-  if (surface === lemma) form = '不定詞（原形）';
-  else if (hit.length) form = '直説法現在・' + hit.map((i) => FR_PERSONS[i]).join('／');
-  return {
-    form,
-    table: { title: '直説法現在形の活用', rows, hit, note: '現在形のみ。ほかの時制は未対応です' },
-  };
+  let tags = [];
+  if (surface === lemma) tags = [{ label: '不定詞（原形）', tone: 'base' }];
+  else if (hit.length) tags = [{ label: '直説法現在', tone: 'tense' }, ...hit.map((i) => ({ label: FR_PERSONS[i], tone: personTone(i) }))];
+  return result(tags, { id: 'present', label: '直説法現在', rows, hit }, '現在形のみ。ほかの時制は未対応です');
 }
 
 // entry: 辞書エントリ（lemma, pos, conj, forms）, surface: 本文中の表記
-// 返り値: { form: '過去形' など|null, table: { title, rows:[{label, form}], hit:[行番号], note? }|null }
+// 返り値: { form: ラベルをつなげた文字列|null, formTags: [{label, tone}],
+//          table: { title, tenses:[{id, label, rows:[{label, form}], hit:[行番号]}], note? }|null }
 export function inflectInfo(lang, entry, surface) {
   const s = norm(surface);
   if (lang === 'en') return enInfo(entry, s);
   if (lang === 'es') return esInfo(entry, s);
   if (lang === 'fr') return frInfo(entry, s);
-  return { form: null, table: null };
+  return result([], null);
 }

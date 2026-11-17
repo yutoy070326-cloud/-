@@ -29,6 +29,14 @@ export default function FileScreen({ fileId, onBack, onOpen, onChanged }) {
     );
   }
 
+  // 言語ごとにまとめる（最初に出てきた言語の順）
+  const groups = [];
+  for (const m of list) {
+    let g = groups.find((x) => x.lang === m.lang);
+    if (!g) groups.push((g = { lang: m.lang, items: [] }));
+    g.items.push(m);
+  }
+
   const reload = () => {
     setList(loadMaterials().filter((m) => m.fileId === fileId));
     onChanged?.();
@@ -72,32 +80,37 @@ export default function FileScreen({ fileId, onBack, onOpen, onChanged }) {
         <p className="hint">{KIND_LABEL[file.kind] ?? 'ファイル'} ・ {list.length}件。学習したい文章を選んでください。</p>
 
         {list.length === 0 && <p className="empty">このファイルには、まだ文章がありません。</p>}
-        <ul className="wordlist">
-          {list.map((m) => (
-            <li key={m.id} className="material" data-testid="material-item">
-              <button className="material-main" onClick={() => onOpen(m)}>
-                <span className="material-title">{m.title}</span>
-                <span className="material-meta">
-                  <span className="word-lang">{langName(m.lang)}</span>
-                  <span>{SOURCE_LABEL[m.source] ?? ''}</span>
-                  <span>{new Date(m.savedAt).toLocaleDateString('ja-JP')}</span>
-                </span>
-                <span className="material-preview">{m.text}</span>
-              </button>
-              <div className="material-actions">
-                <button className="btn ghost small" onClick={() => setRenaming(m)} aria-label={`${m.title} を編集`}>編集</button>
-                {confirmId === m.id ? (
-                  <>
-                    <button className="btn danger small" onClick={() => doDelete(m.id)}>本当に削除</button>
-                    <button className="btn ghost small" onClick={() => setConfirmId(null)}>やめる</button>
-                  </>
-                ) : (
-                  <button className="btn ghost small" onClick={() => setConfirmId(m.id)}>削除</button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+        {groups.map(({ lang, items }) => (
+          <section key={lang} className="lang-group" data-testid={`lang-group-${lang}`}>
+            <h3 className="lang-group-title">{langName(lang)} <span className="badge">{items.length}</span></h3>
+            <ul className="wordlist">
+              {items.map((m) => (
+                <li key={m.id} className="material" data-testid="material-item">
+                  <button className="material-main" onClick={() => onOpen(m)}>
+                    <span className="material-title">{m.title}</span>
+                    <span className="material-meta">
+                      <span className="word-lang">{langName(m.lang)}</span>
+                      <span>{SOURCE_LABEL[m.source] ?? ''}</span>
+                      <span>{new Date(m.savedAt).toLocaleDateString('ja-JP')}</span>
+                    </span>
+                    <span className="material-preview">{m.text}</span>
+                  </button>
+                  <div className="material-actions">
+                    <button className="btn ghost small" onClick={() => setRenaming(m)} aria-label={`${m.title} を編集`}>編集</button>
+                    {confirmId === m.id ? (
+                      <>
+                        <button className="btn danger small" onClick={() => doDelete(m.id)}>本当に削除</button>
+                        <button className="btn ghost small" onClick={() => setConfirmId(null)}>やめる</button>
+                      </>
+                    ) : (
+                      <button className="btn ghost small" onClick={() => setConfirmId(m.id)}>削除</button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
 
         <div className="book-danger">
           <button className="btn ghost small" onClick={() => setRenameFileOpen(true)} data-testid="file-rename">ファイル名を変更</button>

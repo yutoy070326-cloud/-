@@ -6,7 +6,9 @@ import { matchesFilter } from '../lib/folders.js';
 import StepBadge from '../components/StepBadge.jsx';
 import WordDetail, { hasDetail } from '../components/WordDetail.jsx';
 import { getDetail } from '../lib/dictionary.js';
+import FormTags from '../components/FormTags.jsx';
 import { loadAlwaysDetail, saveAlwaysDetail } from '../lib/detailPref.js';
+import { loadSettings } from '../lib/settings.js';
 
 // 例文の中の学習対象の語を目立たせる
 function Context({ context, text }) {
@@ -39,6 +41,7 @@ export default function Review({ filter, onExit }) {
   const [feedback, setFeedback] = useState(null); // { ok, text }
   const [detailOpen, setDetailOpen] = useState(false); // 「詳しく見る」を開いているか
   const [alwaysDetail, setAlwaysDetail] = useState(loadAlwaysDetail);
+  const alwaysTable = loadSettings().alwaysTable;
 
   useEffect(() => {
     if (!feedback) return undefined;
@@ -127,7 +130,10 @@ export default function Review({ filter, onExit }) {
                   </div>
                   <div className="fc-word" lang={cur.lang}>{cur.lemma}</div>
                   {cur.text && cur.text.toLowerCase() !== String(cur.lemma).toLowerCase() && (
-                    <div className="fc-form">本文中: {cur.text}{detail?.form ? `（${detail.form}）` : ''}</div>
+                    <div className="fc-form">
+                      本文中: {cur.text}
+                      <FormTags tags={detail?.formTags} />
+                    </div>
                   )}
                   <Context context={cur.context} text={cur.text} />
                   <div className="fc-hint">タップして意味を見る</div>
@@ -140,7 +146,9 @@ export default function Review({ filter, onExit }) {
                   <div className="fc-meaning">{cur.meaning}</div>
                   {cur.conj && <div className="fc-conj">{cur.conj}</div>}
                   <WordDetail
+                    key={cur.id}
                     detail={detail}
+                    alwaysTable={alwaysTable}
                     open={detailOpen}
                     always={alwaysDetail}
                     onToggle={() => setDetailOpen((o) => !o)}

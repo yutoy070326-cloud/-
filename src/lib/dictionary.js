@@ -303,6 +303,7 @@ export async function lookupWord(text, lang, context = '') {
     conj: '',
     more: [],
     form: null,
+    formTags: [],
     table: null,
     found: false,
     context,

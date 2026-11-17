@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import NotifySettings from './components/NotifySettings.jsx';
+import SettingsSheet from './components/SettingsSheet.jsx';
 import { checkAndNotify, registerServiceWorker, scheduleDailyTrigger } from './lib/notify.js';
 import Home from './screens/Home.jsx';
 import Reader from './screens/Reader.jsx';
@@ -37,6 +38,7 @@ export default function App() {
   const [tutorial, setTutorial] = useState(() => (shouldShowTutorial() ? 'first' : null));
   const showTutorial = () => setTutorial('again');
   const [notifyOpen, setNotifyOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // 通知：Service Worker 登録 → 起動時・30秒ごと・画面復帰時に「出すべき通知」を判定
   useEffect(() => {
@@ -91,6 +93,7 @@ export default function App() {
           onMaterialsChanged={refreshShelf}
           onShowTutorial={showTutorial}
           onOpenNotify={() => setNotifyOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
           onDataRestored={(c) => {
             setWordCount(c.words);
             refreshShelf();
@@ -218,6 +221,7 @@ export default function App() {
         />
       )}
       {notifyOpen && <NotifySettings onClose={() => setNotifyOpen(false)} />}
+      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
       {tutorial && <Tutorial onClose={() => setTutorial(null)} />}
     </div>
   );

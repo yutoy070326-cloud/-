@@ -588,3 +588,43 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .wd-always input { margin: 0; }
 .fc-back-actions { margin-top: auto; }
 .flip.tall .flip-inner { min-height: 560px; }
+
+/* ---- 何形か・何人称（小窓・単語テスト）：種類ごとに色を固定 ---- */
+.ftags { display: inline-flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 0 0; }
+.popup .ftags { display: flex; }
+.ftag { --c: #d6d2c8; padding: 1px 8px; border-radius: 10px; background: var(--c); color: #1f1d1a; font-size: 11px; font-weight: 600; }
+.ftag.base { --c: #d6d2c8; }
+.ftag.past { --c: #ffb36b; }
+.ftag.pp { --c: #ffd166; }
+.ftag.prog { --c: #5fd6c8; }
+.ftag.third { --c: #b794ff; }
+.ftag.plural { --c: #ff9ec2; }
+.ftag.tense { --c: #8ab4ff; }
+.ftag.p1 { --c: #ff8f8f; }
+.ftag.p2 { --c: #7fe0a0; }
+.ftag.p3 { --c: #7fc4ff; }
+.fc-form { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; }
+.pos-dot { display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; }
+.popup-form { display: none; }
+.wd-btn.small { margin-top: 2px; padding: 4px 10px; font-size: 11px; }
+.wd-tenses { display: flex; flex-wrap: wrap; gap: 4px; }
+.wd-tense { padding: 3px 9px; font: inherit; font-size: 11px; color: inherit; background: transparent; border: 1px solid rgba(128, 128, 128, 0.5); border-radius: 12px; }
+.wd-tense.on { background: rgba(255, 210, 31, 0.3); }
+
+/* ---- 設定 ---- */
+.settings-sheet { max-height: 92vh; overflow-y: auto; }
+.set-section { margin-bottom: 14px; }
+.set-h { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.set-row input { width: 20px; height: 20px; }
+.set-color { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.set-sample { display: inline-block; padding: 1px 10px; border-radius: 4px; font-size: 13px; font-weight: 600; color: #1f1d1a; }
+.set-swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.swatch { width: 26px; height: 26px; padding: 0; border: 2px solid transparent; border-radius: 50%; }
+.swatch.on { border-color: #1f1d1a; }
+.swatch-input { width: 30px; height: 30px; padding: 0; border: none; background: none; }
+.set-colors .btn { margin-top: 10px; }
+
+/* ---- ファイルの中の言語グループ ---- */
+.lang-group { margin-top: 14px; }
+.lang-group-title { margin: 0 0 6px; font-size: 14px; color: var(--muted); }

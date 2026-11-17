@@ -9,7 +9,9 @@ import React, {
 import { tokenize, sentenceAround } from '../lib/tokenize.js';
 import { findRange, lookupWord } from '../lib/dictionary.js';
 import WordDetail from '../components/WordDetail.jsx';
+import FormTags from '../components/FormTags.jsx';
 import { loadAlwaysDetail, saveAlwaysDetail } from '../lib/detailPref.js';
+import { loadSettings, highlightColor, posCategory } from '../lib/settings.js';
 import { translateSentences, translateSelection } from '../lib/translate.js';
 import { addToWordbook, upsertMaterial } from '../lib/storage.js';
 import TitleSheet from '../components/TitleSheet.jsx';
@@ -58,6 +60,7 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
   //  word : { id, kind:'word', hid, anchorTop, anchorBottom, anchorX }（本文内に出る小窓）
   //  range: { id, kind:'range', text, result|null, card:'bottom'|'top' }（画面固定カード）
   const [popup, setPopup] = useState(null);
+  const settings = useMemo(loadSettings, []); // ホームの「設定」で決めた内容（色分けなど）
   const [alwaysDetail, setAlwaysDetail] = useState(loadAlwaysDetail); // 「いつも詳しく」設定
   const [openDetailId, setOpenDetailId] = useState(null); // 「詳しく見る」を開いた小窓の id
   const [toast, setToast] = useState('');
@@ -121,6 +124,13 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
     for (const h of highlights) for (let i = h.start; i <= h.end; i++) map.set(i, h.id);
     return map;
   }, [highlights]);
+
+  // ハイライトごとの色（品詞で色分け。辞書の結果が届くまでは標準の黄色）
+  const hlColors = useMemo(() => {
+    const m = new Map();
+    for (const h of highlights) m.set(h.id, highlightColor(settings, h.entry));
+    return m;
+  }, [highlights, settings]);
 
   const popupHl = popup?.kind === 'word' ? highlights.find((h) => h.id === popup.hid) : null;
 
@@ -450,10 +460,13 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
     const cls = [t.type === 'word' ? 'w' : '', hid !== undefined ? 'hl' : '']
       .filter(Boolean)
       .join(' ');
+    const color = hid !== undefined ? hlColors.get(hid) : null;
+    const style = color ? { '--pen': color, '--pen-edge': `color-mix(in srgb, ${color} 80%, #000)` } : undefined;
     return (
       <span
         key={t.i}
         className={cls || undefined}
+        style={style}
         data-t={t.i}
         data-i={clickable ? t.i : undefined}
       >
@@ -573,15 +586,19 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
               {popupHl.entry ? (
                 <>
                   <div className="popup-pos">
+                    {settings.colorByPos && popupHl.entry.found !== false && (
+                      <span className="pos-dot" style={{ background: settings.colors[posCategory(popupHl.entry.pos)] }} aria-hidden="true" />
+                    )}
                     {popupHl.entry.pos}
-                    {popupHl.entry.form && <span className="popup-form" data-testid="word-form">{popupHl.entry.form}</span>}
                   </div>
+                  <FormTags tags={popupHl.entry.formTags} />
                   <div className="popup-meaning">{popupHl.entry.meaning}</div>
                   {popupHl.entry.conj && <div className="popup-conj">{popupHl.entry.conj}</div>}
                   <WordDetail
                     detail={popupHl.entry}
                     open={openDetailId === popup.id}
                     always={alwaysDetail}
+                    alwaysTable={settings.alwaysTable}
                     onToggle={() => setOpenDetailId((id) => (id === popup.id ? null : popup.id))}
                   />
                 </>
