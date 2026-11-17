@@ -3,7 +3,7 @@
 // 中国語（漢字→拼音）・アラビア語（母音が書かれない）・日本語の漢字は、辞書の「読み」が必要。
 // 本物の辞書／AIをつなぐときは、辞書が返す読みを entry.reading に入れる。
 
-export const READING_LANGS = ['zh', 'ja', 'ko', 'ru', 'ar'];
+export const READING_LANGS = ['zh', 'ja', 'ko', 'ru', 'ar', 'th'];
 
 // ---------- 韓国語（改訂ローマ字・簡易版：連音・鼻音化・流音化の基本のみ） ----------
 const KO_INIT = ['g', 'kk', 'n', 'd', 'tt', 'r', 'm', 'b', 'pp', 's', 'ss', '', 'j', 'jj', 'ch', 'k', 't', 'p', 'h'];
@@ -126,7 +126,7 @@ export function readingInfo(lang, text, raw) {
   const t = String(text ?? '').trim();
   if (!t) return null;
   if (lang === 'zh') return raw ? { label: '拼音', text: raw } : null;
-  if (lang === 'ar') return raw ? { label: 'ローマ字', text: raw } : null;
+  if (lang === 'ar' || lang === 'th') return raw ? { label: 'ローマ字', text: raw } : null; // 母音・声調の表記が必要なので、辞書の読みが要る
   if (lang === 'ja') {
     if (raw) return { label: 'ローマ字', text: romanizeKana(raw) };
     return hasKanaOnly(t) ? { label: 'ローマ字', text: romanizeKana(t) } : null;

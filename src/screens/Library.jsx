@@ -47,8 +47,8 @@ const SORTS = [
   { id: 'progress', label: '達成度順（本：少ない→100%に近い）' },
 ];
 // 言語ごとにまとめて、その言語の並べ方で比べる（日本語は50音、中国語は拼音の順 など）
-const LANG_ORDER = ['en', 'es', 'fr', 'de', 'ja', 'zh', 'ko', 'ru', 'ar'];
-const COLLATE_TAG = { zh: 'zh-u-co-pinyin', ja: 'ja', ko: 'ko', ru: 'ru', ar: 'ar', es: 'es', fr: 'fr', de: 'de', en: 'en' };
+const LANG_ORDER = ['en', 'es', 'fr', 'de', 'id', 'tl', 'ja', 'zh', 'ko', 'th', 'ru', 'ar'];
+const COLLATE_TAG = { zh: 'zh-u-co-pinyin', ja: 'ja', ko: 'ko', ru: 'ru', ar: 'ar', id: 'id', tl: 'fil', th: 'th', es: 'es', fr: 'fr', de: 'de', en: 'en' };
 const collators = {};
 const collator = (lang) => (collators[lang] ??= new Intl.Collator(COLLATE_TAG[lang] ?? lang ?? 'en', { sensitivity: 'base', numeric: true }));
 const langRank = (l) => { const i = LANG_ORDER.indexOf(l); return i < 0 ? 99 : i; };

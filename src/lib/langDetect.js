@@ -7,6 +7,8 @@ const STOP = {
   es: 'el la los las de y en un una que por con para es se no su al lo como más pero sus ya fue este mi tu yo del está hay muy hoy son una cuando donde tiene sin sobre entre'.split(' '),
   fr: 'le la les des et un une du de que pour est dans qui pas je il elle nous vous sur avec ce se au aux mon ma sont très être mais ou où ses son leur comme tout'.split(' '),
   de: 'der die das und ein eine ist nicht ich zu mit den von auf für sie es er wir dem des im ihr auch wie nach bei aus noch wird sind war'.split(' '),
+  id: 'yang dan di ke dari ini itu dengan untuk tidak saya kamu dia kami mereka adalah akan sudah ada pada juga atau tetapi karena bisa apa siapa mengapa bagaimana hari sekolah teman buku'.split(' '),
+  tl: 'ang ng sa na at ay mga ako ikaw siya kami kayo sila ito iyon hindi para may mayroon ni kay lang din rin pero kasi ano sino bakit paano araw paaralan kaibigan libro'.split(' '),
 };
 
 const count = (s, re) => (s.match(re) ?? []).length;
@@ -20,8 +22,10 @@ export function detectLanguage(text, current) {
   const han = count(s, /[一-鿿]/g);
   const latin = count(s, /[A-Za-zÀ-ɏ]/g);
 
+  const thai = count(s, /[฀-๿]/g);
   const cyr = count(s, /[Ѐ-ӿ]/g);
   const arab = count(s, /[؀-ۿݐ-ݿ]/g);
+  if (thai > 0 && thai >= latin) return 'th';
   if (cyr > 0 && cyr >= latin) return 'ru';
   if (arab > 0 && arab >= latin) return 'ar';
   if (kana > 0) return 'ja'; // かなが1文字でもあれば日本語
@@ -30,7 +34,7 @@ export function detectLanguage(text, current) {
   if (latin < 3) return null;
 
   const lower = s.toLowerCase();
-  const score = { en: 0, es: 0, fr: 0, de: 0 };
+  const score = { en: 0, es: 0, fr: 0, de: 0, id: 0, tl: 0 };
   score.es += 3 * count(lower, /[ñ¿¡]/g) + count(lower, /[áíóú]/g);
   score.fr += count(lower, /[àâçèêëîïôûùœ]/g) * 1.5;
   score.de += 3 * count(lower, /ß/g) + 1.5 * count(lower, /[äöü]/g);
@@ -46,7 +50,7 @@ export function detectLanguage(text, current) {
 }
 
 // 言語に合わせた入力欄の属性（スマホのキーボード・変換候補・自動大文字を最適化する）
-const CJK = ['ja', 'ko', 'zh', 'ru', 'ar'];
+const CJK = ['ja', 'ko', 'zh', 'ru', 'ar', 'th'];
 const BCP47 = { zh: 'zh-Hans', ja: 'ja', ko: 'ko' };
 export function inputHints(lang, { title = false } = {}) {
   const cjk = CJK.includes(lang);

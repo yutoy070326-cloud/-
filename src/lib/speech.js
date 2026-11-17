@@ -3,7 +3,7 @@
 // 差し替える場合も、speak(text, lang) の形は維持する。
 import { loadSettings } from './settings.js';
 
-const TAGS = { en: 'en-US', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', zh: 'zh-CN', ko: 'ko-KR', ja: 'ja-JP', ru: 'ru-RU', ar: 'ar-SA' };
+const TAGS = { en: 'en-US', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', zh: 'zh-CN', ko: 'ko-KR', ja: 'ja-JP', ru: 'ru-RU', ar: 'ar-SA', id: 'id-ID', tl: 'fil-PH', th: 'th-TH' };
 
 export const speechSupported = () =>
   typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance !== 'undefined';

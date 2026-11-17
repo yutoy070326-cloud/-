@@ -12,6 +12,9 @@ const MORNING = [
   { lang: 'de', text: 'Guten Morgen!', gloss: 'おはよう' },
   { lang: 'ru', text: 'Доброе утро!', gloss: 'おはよう' },
   { lang: 'ar', text: 'صباح الخير', gloss: 'おはよう', raw: 'ṣabāḥ al-khayr' },
+  { lang: 'id', text: 'Selamat pagi!', gloss: 'おはよう' },
+  { lang: 'tl', text: 'Magandang umaga!', gloss: 'おはよう' },
+  { lang: 'th', text: 'สวัสดีตอนเช้า', gloss: 'おはよう', raw: 'sawatdi ton chao' },
 ];
 const DAY = [
   { lang: 'ja', text: 'こんにちは', gloss: '' },
@@ -23,6 +26,9 @@ const DAY = [
   { lang: 'de', text: 'Guten Tag!', gloss: 'こんにちは' },
   { lang: 'ru', text: 'Добрый день!', gloss: 'こんにちは' },
   { lang: 'ar', text: 'مرحبا', gloss: 'こんにちは', raw: 'marḥaban' },
+  { lang: 'id', text: 'Selamat siang!', gloss: 'こんにちは' },
+  { lang: 'tl', text: 'Magandang hapon!', gloss: 'こんにちは' },
+  { lang: 'th', text: 'สวัสดี', gloss: 'こんにちは', raw: 'sawatdi' },
 ];
 const EVENING = [
   { lang: 'ja', text: 'こんばんは', gloss: '' },
@@ -34,6 +40,9 @@ const EVENING = [
   { lang: 'de', text: 'Guten Abend!', gloss: 'こんばんは' },
   { lang: 'ru', text: 'Добрый вечер!', gloss: 'こんばんは' },
   { lang: 'ar', text: 'مساء الخير', gloss: 'こんばんは', raw: 'masāʾ al-khayr' },
+  { lang: 'id', text: 'Selamat malam!', gloss: 'こんばんは' },
+  { lang: 'tl', text: 'Magandang gabi!', gloss: 'こんばんは' },
+  { lang: 'th', text: 'สวัสดีตอนเย็น', gloss: 'こんばんは', raw: 'sawatdi ton yen' },
 ];
 const BYE = [
   { lang: 'ja', text: 'またね！', gloss: '' },
@@ -53,6 +62,9 @@ const BYE = [
   { lang: 'de', text: 'Tschüss!', gloss: 'バイバイ' },
   { lang: 'ru', text: 'Пока!', gloss: 'バイバイ' },
   { lang: 'ar', text: 'مع السلامة', gloss: 'さようなら', raw: 'maʿa s-salāma' },
+  { lang: 'id', text: 'Sampai jumpa!', gloss: 'またね' },
+  { lang: 'tl', text: 'Paalam!', gloss: 'さようなら' },
+  { lang: 'th', text: 'ลาก่อน', gloss: 'さようなら', raw: 'la kon' },
 ];
 
 // 端末の現在時刻 → 'morning'（5〜9時）／'day'（10〜17時）／'evening'（18〜4時）
