@@ -33,14 +33,14 @@ function enInfo(entry, surface) {
   else if (surface === past && surface === pp) form = '過去形・過去分詞';
   else if (surface === past) form = '過去形';
   else if (surface === pp) form = '過去分詞';
-  else if (surface === ing) form = '-ing形（現在分詞・進行形）';
+  else if (surface === ing) form = '現在進行形（be + -ing）';
   else if (surface === third) form = '三人称単数現在形（he／she／it）';
   else form = null;
 
   const rows = [{ label: '原形', form: triple[0] }];
   if (third) rows.push({ label: '三人称単数現在', form: third });
   rows.push({ label: '過去形', form: triple[1] }, { label: '過去分詞', form: triple[2] });
-  if (ing) rows.push({ label: '-ing形', form: ing });
+  if (ing) rows.push({ label: '現在進行形（-ing）', form: ing });
   const hit = rows.map((r, i) => (norm(r.form) === surface ? i : -1)).filter((i) => i >= 0);
   return { form, table: { title: '活用表', rows, hit } };
 }
