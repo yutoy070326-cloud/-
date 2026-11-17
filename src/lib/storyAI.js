@@ -18,6 +18,8 @@ export const PASTE_LANGUAGES = [
   { code: 'zh', label: '中国語 中文' },
   { code: 'ko', label: '韓国語 한국어' },
   { code: 'ja', label: '日本語' },
+  { code: 'ru', label: 'ロシア語 Русский' },
+  { code: 'ar', label: 'アラビア語 العربية' },
 ];
 
 const LANG_NAMES = {
@@ -28,6 +30,8 @@ const LANG_NAMES = {
   zh: '中国語',
   ko: '韓国語',
   ja: '日本語',
+  ru: 'ロシア語',
+  ar: 'アラビア語',
 };
 export const langName = (code) => LANG_NAMES[code] ?? String(code).toUpperCase();
 

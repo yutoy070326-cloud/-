@@ -5,28 +5,34 @@ import KindPicker from '../components/KindPicker.jsx';
 import BookEditSheet from '../components/BookEditSheet.jsx';
 import TitleSheet from '../components/TitleSheet.jsx';
 import { langName } from '../lib/storyAI.js';
+import { bookColor } from '../lib/bookStyle.js';
 
-const hash = (s) => { let h = 7; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); };
-const PALETTE = ['#9b3d3d', '#2f5d8a', '#3d7a5a', '#8a6a2f', '#5b4a8a', '#2f7a7a', '#a1546b', '#555f6e'];
 const KIND_ICON = { article: '📰', lyrics: '🎵', exam: '📝', ai: '✨', other: '📁' };
+const KIND_TAB = { article: '記事', lyrics: '歌詞', exam: '長文問題', ai: 'AI物語', other: 'その他' };
+const KIND_ORDER = ['article', 'lyrics', 'exam', 'ai', 'other'];
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 // 本：ページ数が多いほど分厚く（高さ）・大きく（幅）。ページ数は 1〜数百を想定
 const bookSize = (pages) => ({
-  h: Math.round(clamp(26 + Math.sqrt(pages) * 3.4, 26, 88)),
-  w: Math.round(clamp(58 + Math.sqrt(pages) * 2.2, 58, 100)),
+  h: Math.round(clamp(30 + Math.sqrt(pages) * 3.2, 30, 88)),
+  w: Math.round(clamp(68 + Math.sqrt(pages) * 2, 68, 100)),
 });
-// ファイル：中の文章の量（文字数）が多いほど分厚く。幅は一定
-const fileSize = (chars) => ({ h: Math.round(clamp(26 + Math.sqrt(chars) * 0.75, 26, 88)), w: 90 });
+// ファイル：中の文章の量（文字数）が多いほど分厚く・少し大きく
+const fileSize = (chars) => ({
+  h: Math.round(clamp(30 + Math.sqrt(chars) * 0.7, 30, 88)),
+  w: Math.round(clamp(72 + Math.sqrt(chars) * 0.3, 72, 100)),
+});
 
-// 本棚（ライブラリ）：本とファイルを縦に積み重ねる。本はページ数で、ファイルは中の文章の量で厚みが変わる。
-// 本は読んだページの割合だけ色が塗られるので、積み重ねを見るだけで勉強の進み具合がわかる。
+// 本棚（ライブラリ）：本の山とファイルの山を、それぞれ積み上げる。開くたび・タブを切り替えるたびに、上から落ちて積み重なる。
+// 本はページ数で、ファイルは文章の量で厚みが変わる。本は読んだページの割合だけ色が塗られるので、積み重ねを見るだけで進み具合がわかる。
 const LONG_PRESS_MS = 500;
 const MOVE_TOL = 10;
 
 export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChanged, onShowTutorial }) {
   const [picker, setPicker] = useState(false);
   const [rev, setRev] = useState(0);
+  const [tab, setTab] = useState('all'); // 'all' | 'book' | ファイルの種類
+  const [drop, setDrop] = useState(0); // タブを切り替えるたびに増やして、積み上げの演出をやり直す
   const [menu, setMenu] = useState(null); // { type: 'book'|'file', id }
   const [mode, setMode] = useState(null); // 'edit' | null（メニューから編集を選んだ）
   const [fileError, setFileError] = useState('');
@@ -89,8 +95,20 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
     }
     return { books, files, items, words, stats: { pages, finished } };
   }, [rev]);
+  // 種類のタブ：すべて／本／ファイルの種類（ある種類だけ）
+  const fileItems = data.items.filter((i) => i.type === 'file');
+  const tabs = [
+    { id: 'all', label: 'すべて', n: data.items.length },
+    ...(data.books.length ? [{ id: 'book', label: '本', n: data.books.length }] : []),
+    ...KIND_ORDER.filter((k) => fileItems.some((i) => i.file.kind === k)).map((k) => ({ id: k, label: KIND_TAB[k], n: fileItems.filter((i) => i.file.kind === k).length })),
+  ];
+  const active = tabs.some((t) => t.id === tab) ? tab : 'all'; // 削除で種類が無くなったら「すべて」へ
+  const showBooks = active === 'all' || active === 'book';
+  const showFiles = active === 'all' || (active !== 'book');
   // 積み重ね：古いものが下、新しいものが上
-  const pile = [...data.items].reverse();
+  const books = showBooks ? data.items.filter((i) => i.type === 'book').map((i) => i.book) : [];
+  const files = showFiles ? fileItems.filter((i) => active === 'all' || i.file.kind === active) : [];
+  const pickTab = (id) => { setTab(id); setDrop((d) => d + 1); };
   const menuBook = menu?.type === 'book' ? data.books.find((b) => b.id === menu.id) : null;
   const menuFile = menu?.type === 'file' ? data.files.find((f) => f.id === menu.id) : null;
 
@@ -109,44 +127,69 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
           <div className="stat"><b data-testid="stat-pages">{data.stats.pages}</b><span>学んだページ</span></div>
         </section>
 
-        <div className="stack" data-testid="shelf">
+        {/* 種類のタブ（単語帳の言語タブと同じ） */}
+        <nav className="tabs lib-tabs" role="tablist" aria-label="種類" data-testid="lib-tabs">
+          {tabs.map((t) => (
+            <button key={t.id} role="tab" aria-selected={active === t.id} className={'tab' + (active === t.id ? ' on' : '')} onClick={() => pickTab(t.id)} data-testid={`lib-tab-${t.id}`}>
+              {t.label} <span className="tab-count">{t.n}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="stack" data-testid="shelf" key={`${active}-${drop}`}>
           {data.items.length === 0 ? (
             <p className="shelf-empty">まだ何もありません。<br />右下の「＋」から、本や記事を追加しましょう。</p>
           ) : (
-            <div className="pile">
-              {pile.map((it) => {
-                if (it.type === 'book') {
-                  const b = it.book;
-                  const p = bookProgress(b);
-                  const color = PALETTE[hash(b.title) % PALETTE.length];
-                  const { h, w } = bookSize(b.totalPages ?? 1);
-                  return (
-                    <button key={b.id} className="stack-item book" data-testid="book-cover"
-                      style={{ '--c': color, '--h': `${h}px`, '--w': `${w}%`, '--p': `${p.pct}%` }}
-                      {...pressProps('book', b.id, () => onOpenBook(b.id))}
-                      aria-label={`${b.title}（読んだページ ${p.done}/${b.totalPages}、覚えた単語 ${bookWordCount(b, data.words)}語）`}>
-                      <span className="stack-fill" aria-hidden="true" />
-                      <span className="stack-label">
-                        <span className="stack-title">{p.finished && '★ '}{b.title}</span>
-                        <span className="stack-info">{p.done}/{b.totalPages}p ・ {p.pct}%</span>
-                      </span>
-                    </button>
-                  );
-                }
-                const f = it.file;
-                const { h, w } = fileSize(it.chars);
-                return (
-                  <button key={f.id} className={`stack-item file k-${f.kind}`} data-testid="file-folder"
-                    style={{ '--h': `${h}px`, '--w': `${w}%` }}
-                    {...pressProps('file', f.id, () => onOpenFile(f.id))}
-                    aria-label={`ファイル ${f.name}（${it.count}件、${it.chars}字）`}>
-                    <span className="stack-label">
-                      <span className="stack-title">{KIND_ICON[f.kind] ?? '📁'} {f.name}</span>
-                      <span className="stack-info">{it.count}件 ・ {it.chars.toLocaleString()}字</span>
-                    </span>
-                  </button>
-                );
-              })}
+            <div className={'piles' + (showBooks && showFiles ? ' two' : '')}>
+              {showBooks && (
+                <div className="pile-col" data-testid="pile-books">
+                  <div className="pile-cap">📚 本 {books.length}</div>
+                  <div className="pile">
+                    {books.length === 0 && <p className="pile-empty">本はまだありません</p>}
+                    {[...books].reverse().map((b, k) => {
+                      const p = bookProgress(b);
+                      const { h, w } = bookSize(b.totalPages ?? 1);
+                      const rank = books.length - 1 - k; // 下から何番目か（下から順に落ちてくる）
+                      return (
+                        <button key={b.id} className="stack-item book" data-testid="book-cover"
+                          style={{ '--c': bookColor(b), '--h': `${h}px`, '--w': `${w}%`, '--p': `${p.pct}%`, '--d': `${rank * 90}ms` }}
+                          {...pressProps('book', b.id, () => onOpenBook(b.id))}
+                          aria-label={`${b.title}（読んだページ ${p.done}/${b.totalPages}、覚えた単語 ${bookWordCount(b, data.words)}語）`}>
+                          <span className="stack-fill" aria-hidden="true" />
+                          <span className="stack-label">
+                            <span className="stack-title">{p.finished && '★ '}{b.title}</span>
+                            {h >= 44 && <span className="stack-info">{p.done}/{b.totalPages}p ・ {p.pct}%</span>}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {showFiles && (
+                <div className="pile-col" data-testid="pile-files">
+                  <div className="pile-cap">📁 ファイル {files.length}</div>
+                  <div className="pile">
+                    {files.length === 0 && <p className="pile-empty">ファイルはまだありません</p>}
+                    {[...files].reverse().map((it, k) => {
+                      const f = it.file;
+                      const { h, w } = fileSize(it.chars);
+                      const rank = files.length - 1 - k;
+                      return (
+                        <button key={f.id} className={`stack-item file k-${f.kind}`} data-testid="file-folder"
+                          style={{ '--h': `${h}px`, '--w': `${w}%`, '--d': `${rank * 90 + 45}ms` }}
+                          {...pressProps('file', f.id, () => onOpenFile(f.id))}
+                          aria-label={`ファイル ${f.name}（${it.count}件、${it.chars}字）`}>
+                          <span className="stack-label">
+                            <span className="stack-title">{KIND_ICON[f.kind] ?? '📁'} {f.name}</span>
+                            {h >= 44 && <span className="stack-info">{it.count}件 ・ {it.chars.toLocaleString()}字</span>}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <div className="board" />

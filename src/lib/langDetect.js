@@ -19,6 +19,10 @@ export function detectLanguage(text) {
   const han = count(s, /[一-鿿]/g);
   const latin = count(s, /[A-Za-zÀ-ɏ]/g);
 
+  const cyr = count(s, /[Ѐ-ӿ]/g);
+  const arab = count(s, /[؀-ۿݐ-ݿ]/g);
+  if (cyr > 0 && cyr >= latin) return 'ru';
+  if (arab > 0 && arab >= latin) return 'ar';
   if (kana > 0) return 'ja'; // かなが1文字でもあれば日本語
   if (hangul > 0 && hangul >= han) return 'ko';
   if (han > 0 && latin === 0) return null; // 漢字だけは日本語か中国語か決められない
@@ -41,7 +45,7 @@ export function detectLanguage(text) {
 }
 
 // 言語に合わせた入力欄の属性（スマホのキーボード・変換候補・自動大文字を最適化する）
-const CJK = ['ja', 'ko', 'zh'];
+const CJK = ['ja', 'ko', 'zh', 'ru', 'ar'];
 const BCP47 = { zh: 'zh-Hans', ja: 'ja', ko: 'ko' };
 export function inputHints(lang, { title = false } = {}) {
   const cjk = CJK.includes(lang);

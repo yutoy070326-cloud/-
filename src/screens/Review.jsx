@@ -8,7 +8,10 @@ import WordDetail, { hasDetail } from '../components/WordDetail.jsx';
 import { getDetail } from '../lib/dictionary.js';
 import FormTags from '../components/FormTags.jsx';
 import ConjTable from '../components/ConjTable.jsx';
+import SpeakButton from '../components/SpeakButton.jsx';
+import Reading from '../components/Reading.jsx';
 import { loadAlwaysDetail, saveAlwaysDetail } from '../lib/detailPref.js';
+import { loadSettings } from '../lib/settings.js';
 
 // 例文の中の学習対象の語を目立たせる
 function Context({ context, text }) {
@@ -41,6 +44,7 @@ export default function Review({ filter, onExit }) {
   const [feedback, setFeedback] = useState(null); // { ok, text }
   const [detailOpen, setDetailOpen] = useState(false); // 「詳しく見る」を開いているか
   const [alwaysDetail, setAlwaysDetail] = useState(loadAlwaysDetail);
+  const showReading = loadSettings().showReading;
   const [tableOpen, setTableOpen] = useState(false); // 活用表（何形・何人称のラベルを押すと開く）
 
   useEffect(() => {
@@ -53,6 +57,7 @@ export default function Review({ filter, onExit }) {
   const done = i >= total;
   const cur = done ? null : cards[i];
   // 辞書から何形か・活用表・ほかの意味を引く（保存データは増やさず、表示のたびに引く）
+  const lemmaPron = cur ? getDetail(cur.lang, cur.lemma)?.pron : null; // 表面に出している原形の読み
   const detail = cur ? getDetail(cur.lang, cur.text || cur.lemma) ?? getDetail(cur.lang, cur.lemma) : null;
 
   const answer = (remembered) => {
@@ -130,6 +135,10 @@ export default function Review({ filter, onExit }) {
                     <StepBadge w={cur} />
                   </div>
                   <div className="fc-word" lang={cur.lang}>{cur.lemma}</div>
+                  <div className="fc-sub">
+                    <SpeakButton text={cur.lemma} lang={cur.lang} />
+                    {showReading && <Reading pron={lemmaPron} />}
+                  </div>
                   {cur.text && cur.text.toLowerCase() !== String(cur.lemma).toLowerCase() && (
                     <div className="fc-form">
                       本文中: {cur.text}

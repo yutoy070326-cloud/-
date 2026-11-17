@@ -59,6 +59,10 @@ export default function SettingsSheet({ onClose }) {
         <section className="set-section">
           <h4 className="set-h">意味の小窓・単語テスト</h4>
           <label className="set-row">
+            <span>読み（拼音・ローマ字）を表示する</span>
+            <input type="checkbox" checked={st.showReading} onChange={(e) => update({ showReading: e.target.checked })} data-testid="set-show-reading" />
+          </label>
+          <label className="set-row">
             <span>「詳しく見る」を最初から開く</span>
             <input type="checkbox" checked={st.alwaysDetail} onChange={(e) => update({ alwaysDetail: e.target.checked })} data-testid="set-always-detail" />
           </label>

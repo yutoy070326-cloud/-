@@ -11,6 +11,8 @@ import { findRange, lookupWord } from '../lib/dictionary.js';
 import WordDetail from '../components/WordDetail.jsx';
 import FormTags from '../components/FormTags.jsx';
 import ConjTable from '../components/ConjTable.jsx';
+import SpeakButton from '../components/SpeakButton.jsx';
+import Reading from '../components/Reading.jsx';
 import { loadAlwaysDetail, saveAlwaysDetail } from '../lib/detailPref.js';
 import { loadSettings, highlightColor, posCategory } from '../lib/settings.js';
 import { translateSentences, translateSelection } from '../lib/translate.js';
@@ -526,6 +528,7 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
           ref={bodyRef}
           className="reading"
           lang={lang}
+          dir={lang === 'ar' ? 'rtl' : undefined}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerCancel={onPointerCancel}
@@ -581,12 +584,14 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
             >
               <div className="popup-head">
                 <span className="popup-text">{popupHl.text}</span>
+                <SpeakButton text={popupHl.text} lang={lang} />
                 {popupHl.entry && popupHl.entry.lemma !== popupHl.text && (
                   <span className="popup-lemma">← {popupHl.entry.lemma}</span>
                 )}
               </div>
               {popupHl.entry ? (
                 <>
+                  {settings.showReading && <Reading pron={popupHl.entry.pron} />}
                   <div className="popup-pos">
                     {settings.colorByPos && popupHl.entry.found !== false && (
                       <span className="pos-dot" style={{ background: settings.colors[posCategory(popupHl.entry.pos)] }} aria-hidden="true" />

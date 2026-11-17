@@ -1,4 +1,5 @@
 import { inflectInfo } from './inflect.js';
+import { readingInfo } from './reading.js';
 
 // ===== モック辞書 =====
 // 本番ではここを AI / 辞書API 呼び出しに差し替える（lookupWord のシグネチャはそのまま）。
@@ -189,6 +190,70 @@ const RAW = {
     ['déjeuner', 'déjeuner', '名詞（男性）/動詞', '昼食；昼食をとる', ''],
     ['ensemble', 'ensemble', '副詞', '一緒に', ''],
   ],
+  // 以下の言語はごく一部の単語だけのモック。6番目は「読み」（zh: 拼音 / ja: ひらがな / ar: ローマ字）。
+  // ko・ru・日本語のかなは、辞書になくても規則でローマ字にできる（reading.js）。
+  zh: [
+    ['你好', '你好', '表現', 'こんにちは', '', 'nǐ hǎo'],
+    ['你', '你', '代名詞', 'あなた', '', 'nǐ'],
+    ['我', '我', '代名詞', '私', '', 'wǒ'],
+    ['今天', '今天', '名詞', '今日', '', 'jīntiān'],
+    ['很', '很', '副詞', 'とても', '', 'hěn'],
+    ['高兴', '高兴', '形容詞', 'うれしい', '', 'gāoxìng'],
+    ['朋友', '朋友', '名詞', '友達', '', 'péngyou'],
+    ['学习', '学习', '動詞', '学ぶ、勉強する', '', 'xuéxí'],
+    ['中文', '中文', '名詞', '中国語', '', 'zhōngwén'],
+    ['喜欢', '喜欢', '動詞', '好きだ', '', 'xǐhuan'],
+    ['谢谢', '谢谢', '表現', 'ありがとう', '', 'xièxie'],
+    ['学校', '学校', '名詞', '学校', '', 'xuéxiào'],
+    ['老师', '老师', '名詞', '先生', '', 'lǎoshī'],
+    ['是', '是', '動詞', '〜である', '', 'shì'],
+  ],
+  ja: [
+    ['私|わたし', '私', '代名詞', 'I, me', '', 'わたし'],
+    ['今日', '今日', '名詞', 'today', '', 'きょう'],
+    ['学校', '学校', '名詞', 'school', '', 'がっこう'],
+    ['友達|ともだち', '友達', '名詞', 'friend', '', 'ともだち'],
+    ['勉強', '勉強', '名詞', 'study', '', 'べんきょう'],
+    ['日本語', '日本語', '名詞', 'Japanese (language)', '', 'にほんご'],
+    ['好き', '好き', '形容詞', 'to like, fond of', '', 'すき'],
+    ['食べる|食べ|食べます', '食べる', '動詞', 'to eat', '', 'たべる'],
+    ['本', '本', '名詞', 'book', '', 'ほん'],
+    ['ありがとう', 'ありがとう', '表現', 'thank you', '', ''],
+    ['こんにちは', 'こんにちは', '表現', 'hello', '', 'こんにちわ'], // 「は」は「わ」と読むので、読みはわで持つ
+  ],
+  ko: [
+    ['안녕하세요', '안녕하세요', '表現', 'こんにちは', '', ''],
+    ['감사합니다', '감사합니다', '表現', 'ありがとうございます', '', ''],
+    ['저는|저', '저', '代名詞', '私（丁寧）', '', ''],
+    ['학생', '학생', '名詞', '学生', '', ''],
+    ['학교', '학교', '名詞', '学校', '', ''],
+    ['친구', '친구', '名詞', '友達', '', ''],
+    ['공부합니다|공부해요|공부하다', '공부하다', '動詞', '勉強する', '', ''],
+    ['한국어', '한국어', '名詞', '韓国語', '', ''],
+    ['좋아요|좋아해요|좋아하다', '좋아하다', '動詞', '好きだ、いい', '', ''],
+    ['책', '책', '名詞', '本', '', ''],
+    ['먹어요|먹습니다|먹다', '먹다', '動詞', '食べる', '', ''],
+  ],
+  ru: [
+    ['привет', 'привет', '表現', 'やあ、こんにちは', '', ''],
+    ['спасибо', 'спасибо', '表現', 'ありがとう', '', ''],
+    ['друг|друга|друзья', 'друг', '名詞', '友達', '', ''],
+    ['школа|школе|школу', 'школа', '名詞', '学校', '', ''],
+    ['я', 'я', '代名詞', '私', '', ''],
+    ['люблю|любить|любит', 'любить', '動詞', '愛する、好む', '', ''],
+    ['читать|читаю|читает', 'читать', '動詞', '読む', '', ''],
+    ['книга|книгу|книги', 'книга', '名詞', '本', '', ''],
+    ['хорошо|хороший', 'хороший', '形容詞', 'よい', '', ''],
+  ],
+  ar: [
+    ['مرحبا', 'مرحبا', '表現', 'こんにちは', '', 'marḥaban'],
+    ['شكرا', 'شكرا', '表現', 'ありがとう', '', 'shukran'],
+    ['صديق', 'صديق', '名詞', '友達', '', 'ṣadīq'],
+    ['كتاب', 'كتاب', '名詞', '本', '', 'kitāb'],
+    ['مدرسة', 'مدرسة', '名詞', '学校', '', 'madrasa'],
+    ['أنا', 'أنا', '代名詞', '私', '', 'anā'],
+    ['أحب', 'أحب', '動詞', '好きだ', '', 'uḥibb'],
+  ],
 };
 
 
@@ -239,9 +304,9 @@ export function normalizeKey(s) {
 for (const [lang, rows] of Object.entries(RAW)) {
   const map = new Map();
   let maxWords = 1;
-  for (const [forms, lemma, pos, meaning, conj] of rows) {
+  for (const [forms, lemma, pos, meaning, conj, reading] of rows) {
     const entry = {
-      lemma, pos, meaning, conj,
+      lemma, pos, meaning, conj, reading: reading || '',
       forms: forms.split('|'), // 活用形の一覧（何形かの判定に使う）
       more: EXTRA[`${lang}:${lemma}`] ?? [],
     };
@@ -294,7 +359,7 @@ export function findRange(tokens, idx, lang) {
 export async function lookupWord(text, lang, context = '') {
   await new Promise((r) => setTimeout(r, 150)); // 通信っぽい遅延
   const hit = INDEX[lang]?.get(normalizeKey(text));
-  if (hit) return { text, ...hit, ...inflectInfo(lang, hit, text), found: true };
+  if (hit) return { text, ...hit, ...inflectInfo(lang, hit, text), pron: readingInfo(lang, text, hit.reading), found: true };
   return {
     text,
     lemma: text,
@@ -305,6 +370,7 @@ export async function lookupWord(text, lang, context = '') {
     form: null,
     formTags: [],
     table: null,
+    pron: readingInfo(lang, text, ''),
     found: false,
     context,
   };
@@ -314,6 +380,6 @@ export async function lookupWord(text, lang, context = '') {
 // 見つからなければ null。
 export function getDetail(lang, text) {
   const hit = INDEX[lang]?.get(normalizeKey(text));
-  if (!hit) return null;
-  return { more: hit.more, ...inflectInfo(lang, hit, text) };
+  if (!hit) return { more: [], form: null, formTags: [], table: null, pron: readingInfo(lang, text, '') };
+  return { more: hit.more, ...inflectInfo(lang, hit, text), pron: readingInfo(lang, text, hit.reading) };
 }

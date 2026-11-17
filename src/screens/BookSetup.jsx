@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createBook, addBookPage } from '../lib/storage.js';
+import BookStyleFields from '../components/BookStyleFields.jsx';
 import { PASTE_LANGUAGES } from '../lib/storyAI.js';
 import PagePaper from '../components/PagePaper.jsx';
 import { detectLanguage, inputHints } from '../lib/langDetect.js';
@@ -15,6 +16,7 @@ export default function BookSetup({ onBack, onRead, onBooksChanged, onMaterialsC
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [goal, setGoal] = useState('');
+  const [style, setStyle] = useState({ genre: '', color: '' }); // ジャンル・表紙の色（空＝自動）
   const [langTouched, setLangTouched] = useState(false);
   const [autoLang, setAutoLang] = useState(null);
   const [error, setError] = useState('');
@@ -46,7 +48,7 @@ export default function BookSetup({ onBack, onRead, onBooksChanged, onMaterialsC
 
   const register = (e) => {
     e.preventDefault();
-    const r = createBook({ title, lang, startPage: start, endPage: end, dailyGoal: goal });
+    const r = createBook({ title, lang, startPage: start, endPage: end, dailyGoal: goal, genre: style.genre, color: style.color });
     if (!r.ok) {
       setError(r.error);
       return;
@@ -118,6 +120,7 @@ export default function BookSetup({ onBack, onRead, onBooksChanged, onMaterialsC
                   <label className="mini-label" htmlFor="book-goal">1日の目標ページ数</label>
                   <input id="book-goal" className="input" type="number" inputMode="numeric" min={1}
                     value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="例：5" />
+                  <BookStyleFields value={style} title={title} onChange={setStyle} />
                   {days && <p className="pg-note" data-testid="book-days">全{total}ページ・1日{goal}ページで約{days}日</p>}
                 </div>
               </div>

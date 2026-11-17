@@ -3,6 +3,7 @@
 import { newSrs, normalizeWord, applyPractice } from './srs.js';
 import { healSources, textKey } from './folders.js';
 import { recordStudy } from './studyLog.js';
+import { genreOf, isColor } from './bookStyle.js';
 
 const KEY = 'lingo-reader:wordbook:v1';
 const MKEY = 'lingo-reader:materials:v1';
@@ -266,7 +267,7 @@ const posInt = (v) => {
 };
 
 // 返り値: { ok, error?, book?, list }
-export function createBook({ title, lang, startPage, endPage, dailyGoal }) {
+export function createBook({ title, lang, startPage, endPage, dailyGoal, genre, color }) {
   const list = loadBooks();
   const t = String(title ?? '').trim();
   const start = posInt(startPage);
@@ -288,6 +289,8 @@ export function createBook({ title, lang, startPage, endPage, dailyGoal }) {
     endPage: end,
     totalPages: total,
     dailyGoal: Math.min(goal, total),
+    genre: genreOf(genre) ? genre : undefined, // ジャンル（任意）
+    color: isColor(color) ? color : undefined, // 自分で選んだ表紙の色（なければジャンル色）
     createdAt: now,
     lastReadAt: now,
     pages: {},
@@ -490,7 +493,7 @@ export function deleteFolder(id) {
 }
 
 // 本の初期設定を変更（題名・開始/終了ページ・1日の目標・言語）。返り値: { ok, error?, book?, list }
-export function updateBook(id, { title, lang, startPage, endPage, dailyGoal }) {
+export function updateBook(id, { title, lang, startPage, endPage, dailyGoal, genre, color }) {
   const list = loadBooks();
   const cur = list.find((b) => b.id === id);
   if (!cur) return { ok: false, error: '本が見つかりません', list };
@@ -510,6 +513,9 @@ export function updateBook(id, { title, lang, startPage, endPage, dailyGoal }) {
   }
   const total = end - start + 1;
   const updated = { ...cur, title: t, lang, startPage: start, endPage: end, totalPages: total, dailyGoal: Math.min(goal, total) };
+  // ジャンルと色は、渡されたときだけ変更（空なら「指定しない／自動」に戻す）
+  if (genre !== undefined) { if (genreOf(genre)) updated.genre = genre; else delete updated.genre; }
+  if (color !== undefined) { if (isColor(color)) updated.color = color; else delete updated.color; }
   if (updated.lastPage != null && (updated.lastPage < start || updated.lastPage > end)) delete updated.lastPage;
   const next = list.map((b) => (b.id === id ? updated : b));
   persist(next, BKEY);
@@ -543,4 +549,11 @@ export function updateMaterial(id, { title, text }) {
     persist(words);
   }
   return { ok: true, list: next };
+}
+
+// 文章を開いて学習した日時を記録（ファイルの一覧に「最後に学習した日」として出る）
+export function touchMaterial(id, now = Date.now()) {
+  const list = loadMaterials();
+  if (!list.some((m) => m.id === id)) return;
+  persist(list.map((m) => (m.id === id ? { ...m, lastStudiedAt: now } : m)), MKEY);
 }

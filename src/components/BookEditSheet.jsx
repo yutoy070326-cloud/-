@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { PASTE_LANGUAGES } from '../lib/storyAI.js';
 import { inputHints } from '../lib/langDetect.js';
+import BookStyleFields from './BookStyleFields.jsx';
 
 // 本の初期設定（題名・言語・開始/終了ページ・1日の目標）を編集するシート
 export default function BookEditSheet({ book, onSave, onClose }) {
   const [f, setF] = useState({
     title: book.title, lang: book.lang, startPage: String(book.startPage), endPage: String(book.endPage), dailyGoal: String(book.dailyGoal),
+    genre: book.genre ?? '', color: book.color ?? '',
   });
   const [error, setError] = useState('');
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -38,6 +40,7 @@ export default function BookEditSheet({ book, onSave, onClose }) {
         </div>
         <label className="field-label" htmlFor="be-goal">1日の目標ページ数</label>
         <input id="be-goal" className="input" type="number" inputMode="numeric" min={1} value={f.dailyGoal} onChange={set('dailyGoal')} />
+        <BookStyleFields value={{ genre: f.genre, color: f.color }} title={f.title} onChange={(v) => setF({ ...f, ...v })} />
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="sheet-actions">
           <button type="button" className="btn" onClick={onClose}>キャンセル</button>

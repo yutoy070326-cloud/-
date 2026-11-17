@@ -13,7 +13,7 @@ import BookDetail from './screens/BookDetail.jsx';
 import Compose from './screens/Compose.jsx';
 import Tutorial from './components/Tutorial.jsx';
 import { shouldShowTutorial } from './lib/tutorial.js';
-import { loadWordbook, loadMaterials, loadBooks, loadFiles, migrateLibrary } from './lib/storage.js';
+import { loadWordbook, loadMaterials, loadBooks, loadFiles, migrateLibrary, touchMaterial } from './lib/storage.js';
 import { requestPersistentStorage } from './lib/backup.js';
 
 migrateLibrary(); // 古いデータ（ファイルに入っていない文章）をファイルに移行
@@ -66,6 +66,7 @@ export default function App() {
   }, []);
 
   const startReading = useCallback((s) => {
+    if (s.materialId) touchMaterial(s.materialId); // 「最後に学習した日」を更新
     setSession({ ...s, id: Date.now() });
     setScreen('reader');
   }, []);

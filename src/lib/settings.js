@@ -32,6 +32,7 @@ export const DEFAULT_SETTINGS = {
   colorByPos: true, // 品詞で色分けする
   colors: DEFAULT_COLORS,
   alwaysDetail: false, // 「詳しく見る」を最初から開く
+  showReading: true, // 読み（拼音・ローマ字）を表示する
 };
 
 export function loadSettings() {

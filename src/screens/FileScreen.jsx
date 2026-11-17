@@ -4,7 +4,6 @@ import TextEditSheet from '../components/TextEditSheet.jsx';
 import { langName } from '../lib/storyAI.js';
 import TitleSheet from '../components/TitleSheet.jsx';
 
-const SOURCE_LABEL = { paste: 'ペースト', ai: 'AI生成' };
 const KIND_LABEL = { article: '記事', lyrics: '歌詞', exam: '長文問題', ai: 'AI物語', other: 'ファイル' };
 
 // ライブラリのファイルを開いたときの画面：中に入っている文章を選んで学習する
@@ -111,8 +110,7 @@ export default function FileScreen({ fileId, onBack, onOpen, onChanged }) {
                     <span className="material-title">{m.title}</span>
                     <span className="material-meta">
                       <span className="word-lang">{langName(m.lang)}</span>
-                      <span>{SOURCE_LABEL[m.source] ?? ''}</span>
-                      <span>{new Date(m.savedAt).toLocaleDateString('ja-JP')}</span>
+                      <span>最後に学習した日 {new Date(m.lastStudiedAt ?? m.savedAt).toLocaleDateString('ja-JP')}</span>
                     </span>
                     <span className="material-preview">{m.text}</span>
                   </button>
