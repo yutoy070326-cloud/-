@@ -14,7 +14,8 @@ function result(tags, tense, note) {
     table: tense ? { title: '活用表', tenses: [tense], note } : null,
   };
 }
-const personTone = (i) => `p${(i % 3) + 1}`;
+// 人称ごとに別の色（1人称単数・複数…の6つ）。ラベルも活用表の行も同じ色になる
+const personTone = (i) => `p${i}`;
 
 // ---------- 英語 ----------
 function enTriple(entry) {
@@ -103,7 +104,7 @@ function esInfo(entry, surface) {
   const lemma = norm(entry.lemma);
   const forms = esTable(entry);
   if (!forms) return result([], null);
-  const rows = forms.map((f, i) => ({ label: ES_PERSONS[i], form: f }));
+  const rows = forms.map((f, i) => ({ label: ES_PERSONS[i], form: f, tone: personTone(i) }));
   const hit = forms.map((f, i) => (norm(f) === surface ? i : -1)).filter((i) => i >= 0);
   let tags = [];
   if (surface === lemma) tags = [{ label: '不定詞（原形）', tone: 'base' }];
@@ -133,7 +134,7 @@ function frInfo(entry, surface) {
     forms = FR_ER.map((e) => stem + e);
   }
   if (!forms) return result([], null);
-  const rows = forms.map((f, i) => ({ label: FR_PERSONS[i], form: f }));
+  const rows = forms.map((f, i) => ({ label: FR_PERSONS[i], form: f, tone: personTone(i) }));
   const hit = forms.map((f, i) => (norm(f) === surface ? i : -1)).filter((i) => i >= 0);
   let tags = [];
   if (surface === lemma) tags = [{ label: '不定詞（原形）', tone: 'base' }];

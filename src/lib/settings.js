@@ -32,7 +32,6 @@ export const DEFAULT_SETTINGS = {
   colorByPos: true, // 品詞で色分けする
   colors: DEFAULT_COLORS,
   alwaysDetail: false, // 「詳しく見る」を最初から開く
-  alwaysTable: false, // 活用表を最初から開く
 };
 
 export function loadSettings() {

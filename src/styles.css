@@ -600,9 +600,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ftag.third { --c: #b794ff; }
 .ftag.plural { --c: #ff9ec2; }
 .ftag.tense { --c: #8ab4ff; }
-.ftag.p1 { --c: #ff8f8f; }
-.ftag.p2 { --c: #7fe0a0; }
-.ftag.p3 { --c: #7fc4ff; }
+.ftag.p0, .rdot.p0 { --c: #ff8f8f; } /* 1人称単数：赤 */
+.ftag.p1, .rdot.p1 { --c: #7fe0a0; } /* 2人称単数：緑 */
+.ftag.p2, .rdot.p2 { --c: #7fc4ff; } /* 3人称単数：青 */
+.ftag.p3, .rdot.p3 { --c: #ffc16b; } /* 1人称複数：オレンジ */
+.ftag.p4, .rdot.p4 { --c: #e3ee6b; } /* 2人称複数：黄緑 */
+.ftag.p5, .rdot.p5 { --c: #c59bff; } /* 3人称複数：紫 */
+.rdot { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; background: var(--c, #ccc); }
+.ftags.tappable { cursor: pointer; align-items: center; padding: 3px 4px; margin-left: -4px; border-radius: 12px; border: 1px dashed rgba(128, 128, 128, 0.55); }
+.ftags.tappable.open { border-style: solid; }
+.ftag-chev { font-size: 10px; opacity: 0.8; padding-left: 2px; }
 .fc-form { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; }
 .pos-dot { display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; }
 .popup-form { display: none; }
@@ -628,3 +635,22 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* ---- ファイルの中の言語グループ ---- */
 .lang-group { margin-top: 14px; }
 .lang-group-title { margin: 0 0 6px; font-size: 14px; color: var(--muted); }
+
+/* ===== 本棚：縦積み（本はページ数、ファイルは文章量で厚みが変わる）===== */
+.stack { margin: 14px 0 6px; padding: 14px 10px 0; border-radius: 12px; background: linear-gradient(#efe3cf, #e6d6bb); border: 1px solid #d9c6a3; box-shadow: inset 0 3px 10px rgba(80, 50, 20, .15); }
+.pile { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.stack-item { --c: #e0b85a; position: relative; display: block; flex: none; width: var(--w); height: var(--h); padding: 0; border: none; border-radius: 4px; overflow: hidden; cursor: pointer; text-align: left; font: inherit; background: color-mix(in srgb, var(--c) 38%, #2f261d); box-shadow: 0 2px 3px rgba(40, 25, 10, .35), inset 0 1px 0 rgba(255, 255, 255, .22); }
+.stack-fill { position: absolute; left: 0; top: 0; bottom: 0; width: var(--p, 0%); background: var(--c); transition: width .5s; }
+.stack-label { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 100%; padding: 0 12px; }
+.stack-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 800; }
+.stack-info { flex: none; font-size: 10px; white-space: nowrap; }
+.stack-item.book { color: #fff; }
+.stack-item.book .stack-label { text-shadow: 0 1px 2px rgba(0, 0, 0, .55); }
+.stack-item.book::before, .stack-item.book::after { content: ''; position: absolute; top: 0; bottom: 0; width: 3px; background: rgba(255, 255, 255, .3); }
+.stack-item.book::before { left: 6px; } .stack-item.book::after { right: 6px; }
+.stack-item.file { color: #4a3a10; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .09) 0 1px, transparent 1px 5px), linear-gradient(#f6d77a, #ecc358); }
+.stack-item.file.k-article { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .09) 0 1px, transparent 1px 5px), linear-gradient(#bcd8f3, #9fc4e8); color: #2c2c3a; }
+.stack-item.file.k-lyrics { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .09) 0 1px, transparent 1px 5px), linear-gradient(#f3c0d6, #e8a2c0); color: #2c2c3a; }
+.stack-item.file.k-exam { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .09) 0 1px, transparent 1px 5px), linear-gradient(#c8e6c0, #a8d49e); color: #2c2c3a; }
+.stack-item.file.k-ai { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .09) 0 1px, transparent 1px 5px), linear-gradient(#d9ccf2, #c3b0e8); color: #2c2c3a; }
+.stack-item { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }

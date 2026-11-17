@@ -7,8 +7,8 @@ import StepBadge from '../components/StepBadge.jsx';
 import WordDetail, { hasDetail } from '../components/WordDetail.jsx';
 import { getDetail } from '../lib/dictionary.js';
 import FormTags from '../components/FormTags.jsx';
+import ConjTable from '../components/ConjTable.jsx';
 import { loadAlwaysDetail, saveAlwaysDetail } from '../lib/detailPref.js';
-import { loadSettings } from '../lib/settings.js';
 
 // 例文の中の学習対象の語を目立たせる
 function Context({ context, text }) {
@@ -41,7 +41,7 @@ export default function Review({ filter, onExit }) {
   const [feedback, setFeedback] = useState(null); // { ok, text }
   const [detailOpen, setDetailOpen] = useState(false); // 「詳しく見る」を開いているか
   const [alwaysDetail, setAlwaysDetail] = useState(loadAlwaysDetail);
-  const alwaysTable = loadSettings().alwaysTable;
+  const [tableOpen, setTableOpen] = useState(false); // 活用表（何形・何人称のラベルを押すと開く）
 
   useEffect(() => {
     if (!feedback) return undefined;
@@ -75,6 +75,7 @@ export default function Review({ filter, onExit }) {
     setI(i + 1);
     setFlipped(false);
     setDetailOpen(false);
+    setTableOpen(false);
   };
 
   // 次に復習が来る時刻（終了画面で表示）
@@ -114,7 +115,7 @@ export default function Review({ filter, onExit }) {
         {!done && cur && (
           <>
             <div
-              className={'flip' + (flipped ? ' flipped' : '') + (hasDetail(detail) && (detailOpen || alwaysDetail) ? ' tall' : '')}
+              className={'flip' + (flipped ? ' flipped' : '') + ((hasDetail(detail) && (detailOpen || alwaysDetail)) || tableOpen ? ' tall' : '')}
               role="button"
               tabIndex={0}
               aria-label={flipped ? '表面に戻す' : 'タップして意味を見る'}
@@ -132,9 +133,14 @@ export default function Review({ filter, onExit }) {
                   {cur.text && cur.text.toLowerCase() !== String(cur.lemma).toLowerCase() && (
                     <div className="fc-form">
                       本文中: {cur.text}
-                      <FormTags tags={detail?.formTags} />
+                      <FormTags
+                        tags={detail?.formTags}
+                        open={tableOpen}
+                        onToggle={detail?.table ? () => setTableOpen((o) => !o) : undefined}
+                      />
                     </div>
                   )}
+                  {tableOpen && detail?.table && <ConjTable table={detail.table} />}
                   <Context context={cur.context} text={cur.text} />
                   <div className="fc-hint">タップして意味を見る</div>
                 </div>
@@ -148,7 +154,6 @@ export default function Review({ filter, onExit }) {
                   <WordDetail
                     key={cur.id}
                     detail={detail}
-                    alwaysTable={alwaysTable}
                     open={detailOpen}
                     always={alwaysDetail}
                     onToggle={() => setDetailOpen((o) => !o)}

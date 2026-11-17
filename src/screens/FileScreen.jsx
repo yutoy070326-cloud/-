@@ -16,6 +16,7 @@ export default function FileScreen({ fileId, onBack, onOpen, onChanged }) {
   const [confirmId, setConfirmId] = useState(null);
   const [confirmFile, setConfirmFile] = useState(false);
   const [fileError, setFileError] = useState('');
+  const [tab, setTab] = useState('all'); // 'all' | 言語コード
 
   if (!file) {
     return (
@@ -29,9 +30,17 @@ export default function FileScreen({ fileId, onBack, onOpen, onChanged }) {
     );
   }
 
-  // 言語ごとにまとめる（最初に出てきた言語の順）
-  const groups = [];
+  // 言語ごとにまとめる（最初に出てきた言語の順）。タブで1言語に絞り込める
+  const langs = [];
   for (const m of list) {
+    const l = langs.find((x) => x[0] === m.lang);
+    if (l) l[1] += 1;
+    else langs.push([m.lang, 1]);
+  }
+  const active = tab === 'all' || langs.some(([c]) => c === tab) ? tab : 'all'; // 削除で言語が無くなったら「すべて」へ
+  const shown = active === 'all' ? list : list.filter((m) => m.lang === active);
+  const groups = [];
+  for (const m of shown) {
     let g = groups.find((x) => x.lang === m.lang);
     if (!g) groups.push((g = { lang: m.lang, items: [] }));
     g.items.push(m);
@@ -76,13 +85,25 @@ export default function FileScreen({ fileId, onBack, onOpen, onChanged }) {
         <span className="topbar-spacer" />
       </header>
 
+      {/* 言語タブ（単語帳と同じ） */}
+      <nav className="tabs" role="tablist" aria-label="言語" data-testid="file-tabs">
+        <button role="tab" aria-selected={active === 'all'} className={'tab' + (active === 'all' ? ' on' : '')} onClick={() => setTab('all')}>
+          すべて <span className="tab-count">{list.length}</span>
+        </button>
+        {langs.map(([code, n]) => (
+          <button key={code} role="tab" aria-selected={active === code} className={'tab' + (active === code ? ' on' : '')} onClick={() => setTab(code)}>
+            {langName(code)} <span className="tab-count">{n}</span>
+          </button>
+        ))}
+      </nav>
+
       <main className="content" data-testid="file-screen">
         <p className="hint">{KIND_LABEL[file.kind] ?? 'ファイル'} ・ {list.length}件。学習したい文章を選んでください。</p>
 
         {list.length === 0 && <p className="empty">このファイルには、まだ文章がありません。</p>}
         {groups.map(({ lang, items }) => (
           <section key={lang} className="lang-group" data-testid={`lang-group-${lang}`}>
-            <h3 className="lang-group-title">{langName(lang)} <span className="badge">{items.length}</span></h3>
+            {active === 'all' && <h3 className="lang-group-title">{langName(lang)} <span className="badge">{items.length}</span></h3>}
             <ul className="wordlist">
               {items.map((m) => (
                 <li key={m.id} className="material" data-testid="material-item">

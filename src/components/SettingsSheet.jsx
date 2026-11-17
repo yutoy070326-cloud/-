@@ -62,10 +62,6 @@ export default function SettingsSheet({ onClose }) {
             <span>「詳しく見る」を最初から開く</span>
             <input type="checkbox" checked={st.alwaysDetail} onChange={(e) => update({ alwaysDetail: e.target.checked })} data-testid="set-always-detail" />
           </label>
-          <label className="set-row">
-            <span>活用表を最初から開く</span>
-            <input type="checkbox" checked={st.alwaysTable} onChange={(e) => update({ alwaysTable: e.target.checked })} data-testid="set-always-table" />
-          </label>
         </section>
 
         <div className="sheet-actions">

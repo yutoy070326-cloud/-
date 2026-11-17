@@ -10,6 +10,7 @@ import { tokenize, sentenceAround } from '../lib/tokenize.js';
 import { findRange, lookupWord } from '../lib/dictionary.js';
 import WordDetail from '../components/WordDetail.jsx';
 import FormTags from '../components/FormTags.jsx';
+import ConjTable from '../components/ConjTable.jsx';
 import { loadAlwaysDetail, saveAlwaysDetail } from '../lib/detailPref.js';
 import { loadSettings, highlightColor, posCategory } from '../lib/settings.js';
 import { translateSentences, translateSelection } from '../lib/translate.js';
@@ -63,6 +64,7 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
   const settings = useMemo(loadSettings, []); // ホームの「設定」で決めた内容（色分けなど）
   const [alwaysDetail, setAlwaysDetail] = useState(loadAlwaysDetail); // 「いつも詳しく」設定
   const [openDetailId, setOpenDetailId] = useState(null); // 「詳しく見る」を開いた小窓の id
+  const [openTableId, setOpenTableId] = useState(null); // 活用表を開いた小窓の id
   const [toast, setToast] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -372,7 +374,7 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
     el.style.top = `${top}px`;
     el.style.left = `${left}px`;
     el.style.visibility = 'visible';
-  }, [popup, popupHl?.entry, openDetailId, alwaysDetail]);
+  }, [popup, popupHl?.entry, openDetailId, openTableId, alwaysDetail]);
 
   // ---- トースト ----
   const toastTimer = useRef(null);
@@ -591,14 +593,18 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
                     )}
                     {popupHl.entry.pos}
                   </div>
-                  <FormTags tags={popupHl.entry.formTags} />
+                  <FormTags
+                    tags={popupHl.entry.formTags}
+                    open={openTableId === popup.id}
+                    onToggle={popupHl.entry.table ? () => setOpenTableId((id) => (id === popup.id ? null : popup.id)) : undefined}
+                  />
+                  {openTableId === popup.id && popupHl.entry.table && <ConjTable table={popupHl.entry.table} />}
                   <div className="popup-meaning">{popupHl.entry.meaning}</div>
                   {popupHl.entry.conj && <div className="popup-conj">{popupHl.entry.conj}</div>}
                   <WordDetail
                     detail={popupHl.entry}
                     open={openDetailId === popup.id}
                     always={alwaysDetail}
-                    alwaysTable={settings.alwaysTable}
                     onToggle={() => setOpenDetailId((id) => (id === popup.id ? null : popup.id))}
                   />
                 </>
