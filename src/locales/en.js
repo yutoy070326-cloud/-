@@ -270,5 +270,11 @@ export default {
  "note.words.first": "Studied {n} word(s)!",
  "note.words.first.m": "Studied {n} word(s) and mastered {m}!",
  "note.words.more": "+{n} more word(s) studied!",
- "note.words.more.m": "+{n} more word(s) studied and {m} mastered!"
+ "note.words.more.m": "+{n} more word(s) studied and {m} mastered!",
+ "settings.reset": "Reset data",
+ "settings.reset.btn": "🗑 Delete all study data…",
+ "settings.reset.warn": "This deletes your wordbook, texts, books, files, achievement notes, medals, stamps, toy blocks, total study time and streak. It cannot be undone. (Settings such as display language and colors are kept.)",
+ "settings.reset.tip": "Back up first with \"Data storage\" on Home so you can restore it later.",
+ "settings.reset.cancel": "Cancel",
+ "settings.reset.yes": "Delete everything"
 };

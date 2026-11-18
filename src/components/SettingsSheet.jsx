@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import SpeedSwitch from './SpeedSwitch.jsx';
+import { resetAllLearningData } from '../lib/reset.js';
 import { t, UI_LANGS, getUiLang } from '../lib/i18n.js';
 import {
   POS_CATEGORIES, DEFAULT_COLORS, COLOR_CHOICES, loadSettings, saveSettings,
@@ -8,6 +9,7 @@ import {
 // ホームの「設定」。変更はすぐに保存される（このシートを閉じたあとに開く文章から反映）
 export default function SettingsSheet({ onClose, onChangeLang }) {
   const [st, setSt] = useState(loadSettings);
+  const [resetStep, setResetStep] = useState(0); // 0: 通常 / 1: 確認中
   const update = (patch) => setSt(saveSettings(patch));
   const setColor = (id, color) => update({ colors: { ...st.colors, [id]: color } });
 
@@ -91,6 +93,26 @@ export default function SettingsSheet({ onClose, onChangeLang }) {
             <span>{t('settings.mute', 'あいさつの声を出さない（テキストのみ）')}</span>
             <input type="checkbox" checked={st.muteGreeting} onChange={(e) => update({ muteGreeting: e.target.checked })} data-testid="set-mute-greeting" />
           </label>
+        </section>
+
+        <section className="set-section danger-zone" data-testid="reset-section">
+          <h4 className="set-h">{t('settings.reset', 'データのリセット')}</h4>
+          {resetStep === 0 ? (
+            <button type="button" className="btn danger-text block" onClick={() => setResetStep(1)} data-testid="reset-open">
+              {t('settings.reset.btn', '🗑 すべての学習データを削除する…')}
+            </button>
+          ) : (
+            <div role="alertdialog" aria-label={t('settings.reset', 'データのリセット')} data-testid="reset-confirm">
+              <p className="menu-confirm">
+                {t('settings.reset.warn', '単語帳・文章・本・ファイル・達成ノート・メダル・スタンプ・積み木・総学習時間・連続学習日数を、すべて削除します。元に戻せません。（表示言語や色などの設定は残ります）')}
+              </p>
+              <p className="hint">{t('settings.reset.tip', '先にホームの「データの保管」でバックアップしておくと、あとで復元できます。')}</p>
+              <div className="sheet-actions">
+                <button type="button" className="btn" onClick={() => setResetStep(0)} data-testid="reset-cancel">{t('settings.reset.cancel', 'やめる')}</button>
+                <button type="button" className="btn danger" onClick={() => { resetAllLearningData(); window.location.reload(); }} data-testid="reset-yes">{t('settings.reset.yes', 'すべて削除する')}</button>
+              </div>
+            </div>
+          )}
         </section>
 
         <div className="sheet-actions">
