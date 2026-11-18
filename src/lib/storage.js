@@ -376,6 +376,22 @@ export function ensureFile(kind, name) {
   return { file, list: next, created: true };
 }
 
+// ファイルの名前と種類を変更（ペーストのときの詳細設定：種類・ファイル名／アーティスト／トピック）
+export function updateFile(id, { name, kind }) {
+  const list = loadFiles();
+  const cur = list.find((f) => f.id === id);
+  if (!cur) return { ok: false, error: 'ファイルが見つかりません', list };
+  const n = String(name ?? cur.name).trim();
+  const k = ['article', 'lyrics', 'exam', 'ai', 'other'].includes(kind) ? kind : cur.kind;
+  if (!n) return { ok: false, error: 'ファイル名を入力してください', list };
+  if (n.length > 40) return { ok: false, error: 'ファイル名は40文字以内にしてください', list };
+  if (list.some((f) => f.id !== id && sameFile(f, k, n))) return { ok: false, error: '同じ名前のファイルがすでにあります', list };
+  const next = list.map((f) => (f.id === id ? { ...f, name: n, kind: k } : f));
+  persist(next, FILEKEY);
+  if (k !== cur.kind) persist(loadMaterials().map((m) => (m.fileId === id ? { ...m, kind: k } : m)), MKEY); // 中の文章の種類も合わせる
+  return { ok: true, list: next };
+}
+
 export function renameFile(id, name) {
   const n = String(name ?? '').trim();
   const list = loadFiles();
@@ -532,7 +548,7 @@ export function updateBook(id, { title, lang, startPage, endPage, dailyGoal, gen
 }
 
 // 登録済みの文章（ページ）の題名・本文を編集。保存済みの単語が文章ごとのフォルダーから外れないよう、出典キーも付け替える
-export function updateMaterial(id, { title, text }) {
+export function updateMaterial(id, { title, text, lang, topic, artist, fileId }) {
   const list = loadMaterials();
   const cur = list.find((m) => m.id === id);
   if (!cur) return { ok: false, error: '文章が見つかりません', list };
@@ -540,7 +556,12 @@ export function updateMaterial(id, { title, text }) {
   const t = String(title ?? cur.title).trim();
   if (!body) return { ok: false, error: '本文を入力してください', list };
   if (!t) return { ok: false, error: '題名を入力してください', list };
-  const next = list.map((m) => (m.id === id ? { ...m, title: t, text: body } : m));
+  const extra = {};
+  if (lang) extra.lang = lang; // 学習する言語
+  if (topic !== undefined) extra.topic = topic; // 記事のトピック
+  if (artist !== undefined) extra.artist = artist; // 歌詞のアーティスト
+  if (fileId) extra.fileId = fileId; // 入れる場所（ファイル）
+  const next = list.map((m) => (m.id === id ? { ...m, title: t, text: body, ...extra } : m));
   persist(next, MKEY);
   const oldKey = textKey(cur.text);
   const newKey = textKey(body);
@@ -553,6 +574,8 @@ export function updateMaterial(id, { title, text }) {
   return { ok: true, list: next };
 }
 
+// 文章を5分以上触って学習した、と判定したときに記録する（studiedAt / lastStudiedAt）。
+// 旧：開いただけで記録していた touchMaterial は、判定を変えたので使わない
 // 文章を開いて学習した日時を記録（ファイルの一覧に「最後に学習した日」として出る）
 export function touchMaterial(id, now = Date.now()) {
   const list = loadMaterials();
@@ -565,4 +588,10 @@ export function markShelved(id, now = Date.now()) {
   const list = loadBooks();
   if (!list.some((b) => b.id === id)) return;
   persist(list.map((b) => (b.id === id ? { ...b, shelvedAt: now } : b)), BKEY);
+}
+
+export function markStudied(id, now = Date.now()) {
+  const list = loadMaterials();
+  if (!list.some((m) => m.id === id)) return;
+  persist(list.map((m) => (m.id === id ? { ...m, studiedAt: now, lastStudiedAt: now } : m)), MKEY);
 }

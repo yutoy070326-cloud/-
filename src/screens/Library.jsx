@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { loadBooks, loadFiles, loadMaterials, loadWordbook, bookProgress, bookWordCount, todayPages, updateBook, removeBook, renameFile, removeFile, markShelved } from '../lib/storage.js';
-import { loadShelf, setOrder, setSortMode, placeBlock, storeBlock } from '../lib/shelf.js';
+import { loadBooks, loadFiles, loadMaterials, loadWordbook, bookProgress, bookWordCount, todayPages, updateBook, removeBook, updateFile, removeFile, markShelved } from '../lib/storage.js';
+import { loadShelf, setOrder, setSortMode, placeBlock, storeBlock, UNSTABLE_SHAPES } from '../lib/shelf.js';
 import ItemMenu from '../components/ItemMenu.jsx';
 import KindPicker from '../components/KindPicker.jsx';
 import BookEditSheet from '../components/BookEditSheet.jsx';
-import TitleSheet from '../components/TitleSheet.jsx';
+import FileEditSheet from '../components/FileEditSheet.jsx';
 import ToyBlock from '../components/ToyBlock.jsx';
 import { langName } from '../lib/storyAI.js';
 import { bookColor } from '../lib/bookStyle.js';
 import { t } from '../lib/i18n.js';
 import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
+import { useBackHandler } from '../lib/backRegistry.js';
 
 const KIND_ICON = { article: '📰', lyrics: '🎵', exam: '📝', ai: '✨', other: '📁' };
 const KIND_TAB = { article: '記事', lyrics: '歌詞', exam: '長文問題', ai: 'AI物語', other: 'その他' };
@@ -33,7 +34,16 @@ const spineSize = (pages) => ({
 });
 
 const GAP = 2; // 山のブロック同士のすきま（px）
-const BLOCK_H = 34; // 積み木の台の高さ（小さめ）
+const BLOCK_H = 34; // 積み木の台の高さ（基準。実際は大きさの倍率をかける）
+// 積み木の大きさ（倍率）。古い積み木（倍率なし）は、id から決めた大小にする
+const blockScale = (b) => {
+  if (typeof b.scale === 'number') return b.scale;
+  let h = 7;
+  for (const c of String(b.id)) h = (h * 31 + c.charCodeAt(0)) | 0;
+  return 0.7 + (Math.abs(h) % 90) / 100;
+};
+// 揺れ方（形ごとに、振れ幅と周期が違う）
+const SEESAW = { triangle: [4.5, 2.6], circle: [5.5, 2.2], star: [3, 3.2], semicircle: [2.6, 3.6], arch: [2.6, 3.4] };
 const PER_ROW = 7; // 本棚の1段に並べる本の数
 
 // ---- 並び順（自動）----
@@ -82,6 +92,7 @@ const DRAG_START = 8;
 
 export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChanged }) {
   const tut = useScreenTutorial('library');
+  useBackHandler(onBack);
   const [picker, setPicker] = useState(false);
   const [rev, setRev] = useState(0);
   const [tab, setTab] = useState('all'); // 'all' | 'book' | ファイルの種類
@@ -89,7 +100,8 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
   const [menu, setMenu] = useState(null); // { type: 'book'|'file'|'block', id }
   const [mode, setMode] = useState(null); // 'edit' | null
   const [fileError, setFileError] = useState('');
-  const [tray, setTray] = useState(false); // 積み木の持ち物
+  const [tray, setTray] = useState(false); // 積み木の持ち物（おもちゃ箱）
+  const [selBlock, setSelBlock] = useState(null); // おもちゃ箱で選んだ積み木
   const [stamped, setStamped] = useState(() => new Set()); // ⭐スタンプを押している本
   const [drag, setDrag] = useState(null); // { id, pile, dy }
   const press = useRef({ t: null, fired: false, x: 0, y: 0, dragging: false, down: false, type: '', startY: 0, id: null, pile: null });
@@ -279,16 +291,29 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
   });
 
   // ---- 読破した本が、山から本棚へ飛んでいく ----
+  // 画面をタップすると、演出をスキップして、すぐに本棚に並ぶ
   const leavingKey = data.leaving.map((i) => i.id).join(',');
+  const skipRef = useRef(false);
+  const curFly = useRef(null);
+  const skipFlight = () => { skipRef.current = true; curFly.current?.finish?.(); };
   useEffect(() => {
-    if (!data.leaving.length) return undefined;
+    if (!data.leaving.length) { skipRef.current = false; return undefined; }
     let cancelled = false;
-    const wait = (ms) => new Promise((r) => window.setTimeout(r, ms));
+    // スキップできる待ち時間
+    const wait = async (ms) => {
+      const end = Date.now() + ms;
+      while (Date.now() < end && !skipRef.current && !cancelled) await new Promise((r) => window.setTimeout(r, 50));
+    };
     (async () => {
       await wait(flown.current ? 250 : 2200); // 山が積み上がり終わってから
       flown.current = true;
       for (const it of data.leaving) {
         if (cancelled) return;
+        if (skipRef.current) { // スキップ：残りの本も、すぐに本棚へ
+          data.leaving.forEach((x) => markShelved(x.id));
+          changed();
+          return;
+        }
         const from = nodes.current[it.id];
         const to = shelfNodes.current[it.id];
         if (!from || !to) continue;
@@ -308,12 +333,13 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
           ],
           { duration: 1100, easing: 'ease-in-out', fill: 'forwards' },
         );
+        curFly.current = fly;
         await fly.finished.catch(() => {});
         if (cancelled) return;
         markShelved(it.id);
-        setStamped((s) => new Set(s).add(it.id)); // ⭐スタンプを押す
+        if (!skipRef.current) setStamped((s2) => new Set(s2).add(it.id)); // ⭐スタンプを押す（スキップしたときは省く）
         changed();
-        await wait(1100);
+        await wait(2400); // スタンプを押す演出は、ゆっくり
       }
     })();
     return () => { cancelled = true; };
@@ -328,17 +354,20 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
 
   const dragStyle = (id) => (drag?.id === id ? { transform: `translateY(${drag.dy}px) scale(1.04)`, zIndex: 40, boxShadow: '0 10px 22px rgba(0,0,0,.45)', transition: 'none' } : undefined);
 
-  const renderItem = (it, pile, rank) => {
+  const renderItem = (it, pile, rank, below) => {
     const dragging = drag?.id === it.id;
     const common = { ref: (el) => { nodes.current[it.id] = el; } };
     const drg = canDrag(pile) ? ' draggable' : '';
+    // 不安定な形の積み木（三角・丸・星など）の上に乗った本・ファイルは、シーソーのようにゆらゆら揺れる
+    const seesaw = it.type !== 'block' && below?.type === 'block' && UNSTABLE_SHAPES.includes(below.block.shape) ? SEESAW[below.block.shape] : null;
+    const sw = seesaw ? { '--tilt': `${seesaw[0]}deg`, '--sp': `${seesaw[1]}s` } : null;
     if (it.type === 'block') {
       const b = it.block;
       return (
-        <button key={it.id} {...common} className={'stack-item toy-slot' + drg + (dragging ? ' dragging' : '')} data-testid="toy-block"
-          style={{ '--h': `${BLOCK_H}px`, '--d': `${rank * 90 + 30}ms`, ...dragStyle(it.id) }}
+        <button key={it.id} {...common} className={'stack-item toy-slot' + drg + (dragging ? ' dragging' : '') + (UNSTABLE_SHAPES.includes(b.shape) ? ' unstable' : '')} data-testid="toy-block"
+          style={{ '--h': `${Math.round(BLOCK_H * blockScale(b))}px`, '--bw': `${Math.round(BLOCK_H * blockScale(b) * 1.25)}px`, '--d': `${rank * 90 + 30}ms`, ...dragStyle(it.id) }}
           {...bind('block', b.id, pile, null)} aria-label="積み木（ドラッグで位置を変えられます）">
-          <ToyBlock shape={b.shape} color={b.color} size={BLOCK_H} />
+          <ToyBlock shape={b.shape} color={b.color} size={Math.round(BLOCK_H * blockScale(b))} />
         </button>
       );
     }
@@ -346,8 +375,8 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
       const b = it.book;
       const { h, w } = bookSize(b.totalPages ?? 1);
       return (
-        <button key={it.id} {...common} className={'stack-item book' + drg + (dragging ? ' dragging' : '')} data-testid="book-cover"
-          style={{ '--c': bookColor(b), '--h': `${h}px`, '--w': `${w}%`, '--p': `${it.p.pct}%`, '--d': `${rank * 90}ms`, ...dragStyle(it.id) }}
+        <button key={it.id} {...common} className={'stack-item book' + drg + (dragging ? ' dragging' : '') + (seesaw ? ' seesaw' : '')} data-testid="book-cover"
+          style={{ '--c': bookColor(b), '--h': `${h}px`, '--w': `${w}%`, '--p': `${it.p.pct}%`, '--d': `${rank * 90}ms`, ...sw, ...dragStyle(it.id) }}
           {...bind('book', b.id, pile, () => onOpenBook(b.id))}
           aria-label={`${b.title}（読んだページ ${it.p.done}/${b.totalPages}、覚えた単語 ${bookWordCount(b, data.words)}語）`}>
           <span className="stack-fill" aria-hidden="true" />
@@ -361,8 +390,8 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
     const f = it.file;
     const { h, w } = fileSize(it.chars);
     return (
-      <button key={it.id} {...common} className={`stack-item file k-${f.kind}` + drg + (dragging ? ' dragging' : '')} data-testid="file-folder"
-        style={{ '--h': `${h}px`, '--w': `${w}%`, '--d': `${rank * 90 + 45}ms`, ...dragStyle(it.id) }}
+      <button key={it.id} {...common} className={`stack-item file k-${f.kind}` + drg + (dragging ? ' dragging' : '') + (seesaw ? ' seesaw' : '')} data-testid="file-folder"
+        style={{ '--h': `${h}px`, '--w': `${w}%`, '--d': `${rank * 90 + 45}ms`, ...sw, ...dragStyle(it.id) }}
         {...bind('file', f.id, pile, () => onOpenFile(f.id))}
         aria-label={`ファイル ${f.name}（${it.count}件、${it.chars}字）`}>
         <span className="stack-label">
@@ -376,7 +405,7 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
   const renderPile = (pile) => {
     const items = listFor(pile);
     const n = items.length;
-    return items.map((it, k) => renderItem(it, pile, n - 1 - k)); // 下の段から順に落ちてくる
+    return items.map((it, k) => renderItem(it, pile, n - 1 - k, items[k + 1])); // 下の段から順に落ちてくる
   };
   const bookCount = listFor('books').filter((i) => i.type === 'book').length;
   const fileCount = listFor('files').filter((i) => i.type === 'file').length;
@@ -389,7 +418,7 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
   return (
     <div className="screen">
       <header className="topbar">
-        <button className="btn ghost" onClick={onBack} aria-label={t('common.back', '← 戻る')}>{t('common.back', '← 戻る')}</button>
+        <button className="btn ghost back-btn" onClick={onBack} aria-label={t('common.back', '← 戻る')}>{t('common.back', '← 戻る')}</button>
         <h2 className="title">{t('home.library', 'ライブラリ')}</h2>
         <button className="btn ghost" onClick={tut.show} data-testid="show-tutorial-library" aria-label={t('common.help', '使い方')}>{t('common.help', '使い方')}</button>
       </header>
@@ -501,6 +530,12 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
           </>
         )}
 
+        {data.leaving.length > 0 && showBooks && (
+          <div className="fly-skip" onClick={skipFlight} data-testid="fly-skip" role="button" aria-label={t('lib.skipfly', 'タップでスキップ')}>
+            <span className="fly-skip-hint">{t('lib.skipfly', 'タップでスキップ')}</span>
+          </div>
+        )}
+
         <div className="fab-wrap">
           <button className="fab" onClick={() => setPicker(true)} data-testid="add-fab" aria-label={t('lib.add', '追加する')}>＋</button>
         </div>
@@ -517,21 +552,30 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
       )}
 
       {tray && (
-        <div className="sheet-backdrop" onClick={() => setTray(false)}>
-          <div className="sheet" role="dialog" aria-label="積み木" onClick={(e) => e.stopPropagation()} data-testid="tray">
-            <h3 className="sheet-title">{t('lib.tray.title', '🧱 積み木（{n}個）', { n: heldBlocks.length })}</h3>
-            <p className="hint">{t('lib.tray.hint', '本の山・ファイルの山の「間」に置くと、ブックエンドや仕切りになります。置いたあとは、ドラッグで好きな位置に動かせます。')}</p>
-            {heldBlocks.length === 0 && <p className="empty">{t('lib.tray.none', '持っている積み木はありません。')}</p>}
-            <div className="tray-list">
-              {heldBlocks.map((b) => (
-                <div key={b.id} className="tray-item" data-testid="tray-item">
-                  <ToyBlock shape={b.shape} color={b.color} size={46} />
-                  <button className="btn small" onClick={() => { placeBlock(b.id, 'books', data.order.books); setDrop((d) => d + 1); changed(); }} data-testid="place-books">{t('lib.tray.tobooks', '本の山へ')}</button>
-                  <button className="btn small" onClick={() => { placeBlock(b.id, 'files', data.order.files); setDrop((d) => d + 1); changed(); }} data-testid="place-files">{t('lib.tray.tofiles', 'ファイルの山へ')}</button>
+        <div className="sheet-backdrop" onClick={() => { setTray(false); setSelBlock(null); }}>
+          <div className="sheet toybox-sheet" role="dialog" aria-label={t('lib.block', '積み木')} onClick={(e) => e.stopPropagation()} data-testid="tray">
+            <div className="toybox" data-testid="toybox">
+              <div className="toybox-lid"><span>🧸 {t('lib.toybox', 'おもちゃ箱')}（{heldBlocks.length}）</span></div>
+              <div className="toybox-body">
+                {heldBlocks.length === 0 && <p className="toybox-empty">{t('lib.tray.none', '持っている積み木はありません。')}</p>}
+                <div className="toybox-pile">
+                  {heldBlocks.map((b, i) => (
+                    <button key={b.id} type="button" className={'toybox-block' + (selBlock === b.id ? ' sel' : '')} data-testid="tray-item"
+                      style={{ '--r': `${((i * 37) % 31) - 15}deg` }} onClick={() => setSelBlock(selBlock === b.id ? null : b.id)} aria-pressed={selBlock === b.id}>
+                      <ToyBlock shape={b.shape} color={b.color} size={Math.round(46 * blockScale(b))} />
+                    </button>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
-            <div className="sheet-actions"><button className="btn primary" onClick={() => setTray(false)}>{t('common.close', '閉じる')}</button></div>
+            <p className="hint">{selBlock ? t('lib.tray.pick', 'どこに置く？') : t('lib.tray.hint2', '積み木をタップして選ぶと、本の山・ファイルの山に置けます。間に置くと、ブックエンドや仕切りになります。')}</p>
+            {selBlock && (
+              <div className="toybox-actions">
+                <button className="btn" onClick={() => { placeBlock(selBlock, 'books', data.order.books); setSelBlock(null); setDrop((d) => d + 1); changed(); }} data-testid="place-books">{t('lib.tray.tobooks', '本の山へ')}</button>
+                <button className="btn" onClick={() => { placeBlock(selBlock, 'files', data.order.files); setSelBlock(null); setDrop((d) => d + 1); changed(); }} data-testid="place-files">{t('lib.tray.tofiles', 'ファイルの山へ')}</button>
+              </div>
+            )}
+            <div className="sheet-actions"><button className="btn primary" onClick={() => { setTray(false); setSelBlock(null); }}>{t('common.close', '閉じる')}</button></div>
           </div>
         </div>
       )}
@@ -578,21 +622,18 @@ export default function Library({ onBack, onOpenBook, onOpenFile, onAdd, onChang
         />
       )}
       {menuFile && mode === 'edit' && (
-        <TitleSheet
-          heading="ファイル名を変更"
-          initial={menuFile.name}
-          confirmLabel="変更する"
+        <FileEditSheet
+          file={menuFile}
           error={fileError}
           onClose={closeAll}
-          onSave={(name) => {
-            const r = renameFile(menuFile.id, name);
+          onSave={(f) => {
+            const r = updateFile(menuFile.id, f);
             if (!r.ok) { setFileError(r.error); return; }
             closeAll();
             changed();
           }}
         />
       )}
-      {tut.node}
     </div>
   );
 }

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { PASTE_LANGUAGES } from '../lib/storyAI.js';
 import { inputHints } from '../lib/langDetect.js';
 import BookStyleFields from './BookStyleFields.jsx';
+import { keyboardLikelyMissing } from '../lib/keyboard.js';
+import { t } from '../lib/i18n.js';
 
 // 本の初期設定（題名・言語・開始/終了ページ・1日の目標）を編集するシート
 export default function BookEditSheet({ book, onSave, onClose }) {
@@ -9,6 +11,7 @@ export default function BookEditSheet({ book, onSave, onClose }) {
     title: book.title, lang: book.lang, startPage: String(book.startPage), endPage: String(book.endPage), dailyGoal: String(book.dailyGoal),
     genre: book.genre ?? '', color: book.color ?? '',
   });
+  const [kbMsg, setKbMsg] = useState(false);
   const [error, setError] = useState('');
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
@@ -22,12 +25,14 @@ export default function BookEditSheet({ book, onSave, onClose }) {
     <div className="sheet-backdrop" onClick={onClose}>
       <form className="sheet sheet-form" role="dialog" aria-label="本の設定を編集" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <h3 className="sheet-title">本の設定を編集</h3>
-        <label className="field-label" htmlFor="be-title">本の題名</label>
-        <input id="be-title" className="input" value={f.title} maxLength={60} onChange={set('title')} autoFocus {...inputHints(f.lang, { title: true })} />
         <label className="field-label" htmlFor="be-lang">学習する言語</label>
         <select id="be-lang" className="input" value={f.lang} onChange={set('lang')}>
           {PASTE_LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
         </select>
+        <label className="field-label" htmlFor="be-title">本の題名</label>
+        <input id="be-title" className="input" value={f.title} maxLength={60} onChange={set('title')} {...inputHints(f.lang, { title: true })}
+          onFocus={() => setKbMsg(keyboardLikelyMissing(f.lang))} />
+        {kbMsg && <p className="kb-warning" role="alert" onClick={() => setKbMsg(false)} data-testid="kb-warning">{t('kb.missing', '選択した言語のキーボードがご使用の機器にダウンロードされていません。')}</p>}
         <div className="be-row">
           <div>
             <label className="field-label" htmlFor="be-start">開始ページ</label>

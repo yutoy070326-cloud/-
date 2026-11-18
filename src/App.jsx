@@ -2,6 +2,9 @@ import React, { useState, useCallback, useEffect } from 'react';
 import NotifySettings from './components/NotifySettings.jsx';
 import SettingsSheet from './components/SettingsSheet.jsx';
 import { getUiLang, setUiLang, t } from './lib/i18n.js';
+import { loadSettings, saveSettings } from './lib/settings.js';
+import { runBack } from './lib/backRegistry.js';
+import { recordUse, decideIfDue, uxVisible } from './lib/uxExperiment.js';
 import { checkAndNotify, registerServiceWorker, scheduleDailyTrigger } from './lib/notify.js';
 import Home from './screens/Home.jsx';
 import Reader from './screens/Reader.jsx';
@@ -22,7 +25,7 @@ import LoginBonus from './components/LoginBonus.jsx';
 import { claimLoginBonus } from './lib/shelf.js';
 import { startSession, loadSession, clearSession, oppositeChar, finishSession, syncSessionNote, updateNote } from './lib/diary.js';
 import { shouldShowTutorial } from './lib/tutorial.js';
-import { loadWordbook, loadMaterials, loadBooks, loadFiles, migrateLibrary, touchMaterial } from './lib/storage.js';
+import { loadWordbook, loadMaterials, loadBooks, loadFiles, migrateLibrary } from './lib/storage.js';
 import { requestPersistentStorage } from './lib/backup.js';
 
 migrateLibrary(); // 古いデータ（ファイルに入っていない文章）をファイルに移行
@@ -73,6 +76,7 @@ export default function App() {
   const endStudy = () => {
     const s = loadSession() ?? { startedAt: new Date().setHours(0, 0, 0, 0), char: char ?? 'boy' };
     // ノートを仕上げる（学習時間も書く）。押した時点で保存されるので、演出の途中で閉じても残る
+    saveSettings({ speechRate: 1 }); // 音声の速さは、学習を終えたら標準に戻す
     const r = finishSession();
     setFinish({ noteId: r.noteId, lines: r.note?.lines ?? [], medals: r.medals, farewellChar: oppositeChar(s.char) }); // 開始時と反対のキャラクターでお見送り
     setPhase('finish');
@@ -80,11 +84,22 @@ export default function App() {
 
   // 新しく達成したことが見つかったら、自動で今日の達成ノートに書く（学習中、定期的に・画面を切り替えたときに確認する）
   const [toast, setToast] = useState(null);
+
+  // ボタン配置の比較実験：期間がたっていたら、使われなかった方を消す。左上の「戻る」を押した回数も数える
+  const [, setUxTick] = useState(0);
+  useEffect(() => {
+    const apply = () => { document.documentElement.dataset.uxBack = ['top', 'bottom'].find((w) => uxVisible('back', w) && !uxVisible('back', w === 'top' ? 'bottom' : 'top')) ?? ''; };
+    if (decideIfDue()) setUxTick((n) => n + 1);
+    apply();
+    const onClick = (e) => { if (e.target.closest?.('.back-btn')) recordUse('back', 'top'); };
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
+  }, []);
   useEffect(() => {
     if (phase !== 'app') return undefined;
     const run = () => {
       const r = syncSessionNote();
-      if (r && r.added.length > 0) setToast(t('toast.note', '📓 達成ノートに書きました：{text}', { text: r.added[0].text }));
+      if (r && r.added.length > 0 && loadSettings().noteToast) setToast(t('toast.note', '📓 達成ノートに書きました：{text}', { text: r.added[0].text }));
     };
     const id = setTimeout(run, 800);
     const iv = setInterval(run, 20000);
@@ -147,7 +162,6 @@ export default function App() {
   };
 
   const startReading = useCallback((s) => {
-    if (s.materialId) touchMaterial(s.materialId); // 「最後に学習した日」を更新
     setSession({ ...s, id: Date.now() });
     setScreen('reader');
   }, []);
@@ -319,6 +333,9 @@ export default function App() {
       {screen === 'notes' && <NotesScreen onBack={() => setScreen('home')} />}
       {screen === 'medals' && <MedalAlbum onBack={() => setScreen('home')} />}
       {screen === 'stamps' && <StampScreen onBack={() => setScreen('home')} />}
+      {phase === 'app' && screen !== 'home' && uxVisible('back', 'bottom') && (
+        <button className="back-pill" onClick={() => { recordUse('back', 'bottom'); runBack(); }} data-testid="back-bottom" aria-label={t('common.back', '← 戻る')}>{t('common.back', '← 戻る')}</button>
+      )}
       {phase === 'app' && screen !== 'home' && trail.length >= 2 && (
         <button className="home-fab" onClick={() => setScreen('home')} aria-label={t('common.home', 'ホームに戻る')} data-testid="home-fab">🏠</button>
       )}

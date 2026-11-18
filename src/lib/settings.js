@@ -33,6 +33,7 @@ export const DEFAULT_SETTINGS = {
   colors: DEFAULT_COLORS,
   alwaysDetail: false, // 「詳しく見る」を最初から開く
   genreColors: {}, // ジャンルごとの既定の表紙色（自分で変えた色を覚える）
+  noteToast: false, // 達成ノートに書いたとき、画面に黒いお知らせを出す
   uiLang: 'ja', // 画面の表示言語
   speechRate: 1, // 音声の速さ：0.75（ゆっくり）／1（ふつう）／1.25（はやい）
   muteGreeting: false, // 開始・終了のあいさつの声をオフ（テキストのみ）

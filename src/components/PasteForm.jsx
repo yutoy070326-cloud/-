@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import Chips from './Chips.jsx';
+import LearningTip from './LearningTip.jsx';
 import { loadFiles, ensureFile, upsertMaterial } from '../lib/storage.js';
 import { PASTE_LANGUAGES, langName, SAMPLE_PASTE } from '../lib/storyAI.js';
 import { detectLanguage, inputHints } from '../lib/langDetect.js';
@@ -27,7 +28,7 @@ const NEW_ITEM = '__new__';
 //  ・題名・本文から言語を自動判定し、「学習する言語」を連動して切り替える（手動で選んだ後は変えない）
 //  ・選んだ言語を入力欄の lang 属性などに反映し、スマホのキーボード・変換を呼び出しやすくする
 export default function PasteForm({ fixedKind, onStart, onOpenBookNew, onMaterialsChanged }) {
-  const [kind, setKind] = useState(fixedKind ?? 'other');
+  const [kind, setKind] = useState(fixedKind ?? null); // 最初は種類チップだけ。選ぶと、詳細設定が開く
   const [lang, setLang] = useState('en');
   const [langTouched, setLangTouched] = useState(false);
   const [autoLang, setAutoLang] = useState(null); // 自動で切り替えた言語（案内表示用）
@@ -54,8 +55,9 @@ export default function PasteForm({ fixedKind, onStart, onOpenBookNew, onMateria
   const artistName = addingArtist ? artistNew.trim() : artistSel;
 
   // ---- 言語の自動判定 ----
-  const detect = (value) => {
+  const detect = (value, from = 'title') => {
     if (langTouched) return;
+    if (kind === 'lyrics' && from !== 'body') return; // 歌詞は、曲名・アーティスト名ではなく、歌詞の言語で判断する
     const code = detectLanguage(value, lang);
     if (code && code !== lang && PASTE_LANGUAGES.some((l) => l.code === code)) {
       setLang(code);
@@ -114,6 +116,7 @@ export default function PasteForm({ fixedKind, onStart, onOpenBookNew, onMateria
 
   return (
     <section className="panel">
+      <LearningTip />
       {!fixedKind && (
         <>
           <label className="field-label">文章の種類</label>
@@ -121,6 +124,8 @@ export default function PasteForm({ fixedKind, onStart, onOpenBookNew, onMateria
         </>
       )}
 
+      {kind && (
+        <>
       <label className="field-label" htmlFor="paste-lang">学習する言語</label>
       <select id="paste-lang" className="input" value={lang} onChange={(e) => pickLang(e.target.value)} data-testid="paste-lang">
         {PASTE_LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
@@ -190,9 +195,9 @@ export default function PasteForm({ fixedKind, onStart, onOpenBookNew, onMateria
         className="textarea"
         rows={9}
         {...hints}
-        placeholder="ここに学びたい文章を貼り付けてください"
+        placeholder={kind === 'lyrics' ? 'ここに学びたい歌詞を貼り付けてください' : 'ここに学びたい文章を貼り付けてください'}
         value={text}
-        onChange={(e) => { setText(e.target.value); detect(e.target.value); }}
+        onChange={(e) => { setText(e.target.value); detect(e.target.value, 'body'); }}
       />
       <div className="row">
         <button className="btn link" type="button" onClick={() => { setLang('en'); setLangTouched(true); setAutoLang(null); setText(SAMPLE_PASTE.en); }}>
@@ -202,6 +207,8 @@ export default function PasteForm({ fixedKind, onStart, onOpenBookNew, onMateria
       <button className="btn primary block" disabled={!canStart} onClick={start}>
         この文章で学習をはじめる
       </button>
+        </>
+      )}
       {error && <p className="form-error" role="alert">{error}</p>}
     </section>
   );

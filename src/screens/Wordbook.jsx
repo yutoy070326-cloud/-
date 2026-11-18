@@ -21,6 +21,8 @@ import StepBadge from '../components/StepBadge.jsx';
 import WordForm from '../components/WordForm.jsx';
 import FolderManager from '../components/FolderManager.jsx';
 import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
+import ReviewSchedule from '../components/ReviewSchedule.jsx';
+import { useBackHandler } from '../lib/backRegistry.js';
 
 export default function Wordbook({ onBack, onChanged, initial = {}, onStartReview }) {
   const now = useNow();
@@ -30,6 +32,7 @@ export default function Wordbook({ onBack, onChanged, initial = {}, onStartRevie
   const [customFolders, setCustomFolders] = useState(() => loadFolders());
   const [manager, setManager] = useState(false);
   const tut = useScreenTutorial('wordbook');
+  useBackHandler(onBack);
   const [view, setView] = useState(initial.view ?? 'list'); // 'list'（単語帳） | 'review'（復習）
   const [tab, setTab] = useState(initial.lang ?? 'all'); // 'all' | 言語コード
   const [source, setSource] = useState(initial.source ?? 'all'); // 'all' | 文章フォルダーのキー
@@ -132,7 +135,7 @@ export default function Wordbook({ onBack, onChanged, initial = {}, onStartRevie
   return (
     <div className="screen">
       <header className="topbar">
-        <button className="btn ghost" onClick={onBack} aria-label="戻る">
+        <button className="btn ghost back-btn" onClick={onBack} aria-label="戻る">
           ← 戻る
         </button>
         <h2 className="title">単語帳</h2>
@@ -317,37 +320,14 @@ export default function Wordbook({ onBack, onChanged, initial = {}, onStartRevie
               <p className="hint center">期限が来ているカードを先に出題します</p>
             )}
 
-            {due.length > 0 && (
-              <>
-                <h3 className="section-title">本日の復習対象カード</h3>
-                <ul className="mini-list" data-testid="due-list">
-                  {due.map((w) => (
-                    <li key={w.id}>
-                      <span className="mini-word">{w.lemma}</span>
-                      {active === 'all' && <span className="word-lang">{langName(w.lang)}</span>}
-                      <span className="mini-sub"><StepBadge w={w} /></span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            {upcoming.length > 0 && (
-              <>
-                <h3 className="section-title">これからの復習予定</h3>
-                <ul className="mini-list" data-testid="upcoming-list">
-                  {upcoming.map((w) => (
-                    <li key={w.id}>
-                      <span className="mini-word">{w.lemma}</span>
-                      {active === 'all' && <span className="word-lang">{langName(w.lang)}</span>}
-                      <span className="mini-sub">
-                        <StepBadge w={w} /> {formatRemaining(w.dueAt, now)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
+            {/* 復習の予定：ステップ → 復習の時刻 → 単語、の順に開く。どの段でも、そのカテゴリーだけでテストできる */}
+            <ReviewSchedule
+              words={shown}
+              now={now}
+              showLang={active === 'all'}
+              resetKey={JSON.stringify(filter)}
+              onTest={(ids) => onStartReview?.({ ...filter, scope: 'all', ids })}
+            />
 
             <details className="schedule-note">
               <summary>復習のスケジュール</summary>

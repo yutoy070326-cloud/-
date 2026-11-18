@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import SpeedSwitch from './SpeedSwitch.jsx';
 import { resetAllLearningData } from '../lib/reset.js';
+import { uxSummary, uxResultJson } from '../lib/uxExperiment.js';
 import { t, UI_LANGS, getUiLang } from '../lib/i18n.js';
 import {
   POS_CATEGORIES, DEFAULT_COLORS, COLOR_CHOICES, loadSettings, saveSettings,
@@ -9,6 +10,7 @@ import {
 // ホームの「設定」。変更はすぐに保存される（このシートを閉じたあとに開く文章から反映）
 export default function SettingsSheet({ onClose, onChangeLang }) {
   const [st, setSt] = useState(loadSettings);
+  const [copied, setCopied] = useState(false);
   const [resetStep, setResetStep] = useState(0); // 0: 通常 / 1: 確認中
   const update = (patch) => setSt(saveSettings(patch));
   const setColor = (id, color) => update({ colors: { ...st.colors, [id]: color } });
@@ -88,11 +90,46 @@ export default function SettingsSheet({ onClose, onChangeLang }) {
         </section>
 
         <section className="set-section">
+          <h4 className="set-h">{t('settings.notes', '達成ノート')}</h4>
+          <label className="set-row">
+            <span>{t('settings.notetoast', '書いたときのお知らせを表示する')}</span>
+            <input type="checkbox" checked={st.noteToast} onChange={(e) => update({ noteToast: e.target.checked })} data-testid="set-note-toast" />
+          </label>
+        </section>
+
+        <section className="set-section">
           <h4 className="set-h">{t('settings.greet', '開始・終了のあいさつ')}</h4>
           <label className="set-row">
             <span>{t('settings.mute', 'あいさつの声を出さない（テキストのみ）')}</span>
             <input type="checkbox" checked={st.muteGreeting} onChange={(e) => update({ muteGreeting: e.target.checked })} data-testid="set-mute-greeting" />
           </label>
+        </section>
+
+        <section className="set-section" data-testid="beta-section">
+          <h4 className="set-h">{t('settings.beta', 'ベータ版テスト（ボタンの位置の比較）')}</h4>
+          {(() => {
+            const u = uxSummary();
+            const row = (kind, label) => {
+              const c = u.counts[kind];
+              const d = u.decided[kind];
+              return (
+                <div className="set-row" data-testid={`beta-${kind}`}>
+                  <span>{label}</span>
+                  <span className="beta-count">{t('settings.beta.count', '上 {a}回 ／ 下 {b}回', { a: c.top, b: c.bottom })}{d ? ` → ${d === 'top' ? t('settings.beta.top', '上を残しました') : t('settings.beta.bottom', '下を残しました')}` : ''}</span>
+                </div>
+              );
+            };
+            return (
+              <>
+                {row('back', t('settings.beta.back', '戻るボタン（左上 ／ 左下）'))}
+                {row('save', t('settings.beta.save', '保存ボタン（右上 ／ 下の中央）'))}
+                <p className="hint">{u.daysLeft > 0 ? t('settings.beta.left', 'あと{n}日たつと、使われなかった方を自動で消します。', { n: u.daysLeft }) : t('settings.beta.done', '期間が終わり、使われなかった方を消しました。')}</p>
+                <button type="button" className="btn small" data-testid="beta-copy" onClick={async () => { try { await navigator.clipboard.writeText(uxResultJson()); setCopied(true); } catch { setCopied(false); } }}>
+                  {copied ? t('settings.beta.copied', 'コピーしました') : t('settings.beta.copy', '結果をコピー（開発者に送る）')}
+                </button>
+              </>
+            );
+          })()}
         </section>
 
         <section className="set-section danger-zone" data-testid="reset-section">

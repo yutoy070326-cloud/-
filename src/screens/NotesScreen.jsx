@@ -4,10 +4,12 @@ import { loadNotes, loadMedals, medalName, totalsOf } from '../lib/diary.js';
 import { dayStr } from '../lib/studyLog.js';
 import { t, uiLocale } from '../lib/i18n.js';
 import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
+import { useBackHandler } from '../lib/backRegistry.js';
 
 // 達成ノート：カレンダーで日付を押すと、その日に達成したことが見られる
 export default function NotesScreen({ onBack }) {
   const tut = useScreenTutorial('notes');
+  useBackHandler(onBack);
   const notes = useMemo(loadNotes, []);
   const medals = useMemo(() => Object.fromEntries(loadMedals().map((m) => [m.id, m])), []);
   const byDay = useMemo(() => {
@@ -37,7 +39,7 @@ export default function NotesScreen({ onBack }) {
   return (
     <div className="screen">
       <header className="topbar">
-        <button className="btn ghost" onClick={onBack}>{t('common.back', '← 戻る')}</button>
+        <button className="btn ghost back-btn" onClick={onBack}>{t('common.back', '← 戻る')}</button>
         <h2 className="title">{t('notes.title', '📓 達成ノート')}</h2>
         <HelpButton onClick={tut.show} />
       </header>

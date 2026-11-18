@@ -1,17 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createBook, addBookPage } from '../lib/storage.js';
 import BookStyleFields from '../components/BookStyleFields.jsx';
+import { keyboardLikelyMissing } from '../lib/keyboard.js';
+import { t } from '../lib/i18n.js';
 import { PASTE_LANGUAGES } from '../lib/storyAI.js';
 import PagePaper from '../components/PagePaper.jsx';
 import { detectLanguage, inputHints } from '../lib/langDetect.js';
 import { langName } from '../lib/storyAI.js';
 import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
+import { useBackHandler } from '../lib/backRegistry.js';
 
 const reduced = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 // 新しい本の登録。白紙の本が開く → 詳細設定（見開き）→ ページがめくれて1ページ目 → 本文を貼り付け
 export default function BookSetup({ onBack, onRead, onBooksChanged, onMaterialsChanged }) {
   const tut = useScreenTutorial('bookNew');
+  useBackHandler(onBack);
   const [phase, setPhase] = useState('closed'); // closed → opening → form → flipping → page
   const [title, setTitle] = useState('');
   const [lang, setLang] = useState('en');
@@ -21,6 +25,7 @@ export default function BookSetup({ onBack, onRead, onBooksChanged, onMaterialsC
   const [style, setStyle] = useState({ genre: '', color: '' }); // ジャンル・表紙の色（空＝自動）
   const [langTouched, setLangTouched] = useState(false);
   const [autoLang, setAutoLang] = useState(null);
+  const [kbMsg, setKbMsg] = useState(false); // 選んだ言語のキーボードが無さそうなときの案内（タップで消える）
   const [error, setError] = useState('');
   const [book, setBook] = useState(null);
   const timers = useRef([]);
@@ -90,7 +95,7 @@ export default function BookSetup({ onBack, onRead, onBooksChanged, onMaterialsC
   return (
     <div className="screen bookscreen">
       <header className="topbar">
-        <button className="btn ghost" onClick={onBack} aria-label="戻る">← 戻る</button>
+        <button className="btn ghost back-btn" onClick={onBack} aria-label="戻る">← 戻る</button>
         <h2 className="title">新しい本</h2>
         <HelpButton onClick={tut.show} />
       </header>
@@ -101,13 +106,17 @@ export default function BookSetup({ onBack, onRead, onBooksChanged, onMaterialsC
             <div className={'spread' + (open ? ' open' : '') + (phase === 'flipping' ? ' flipping' : '')} aria-label="本の見開き">
               <div className="pg pg-left">
                 <div className="pg-fields">
-                  <label className="mini-label" htmlFor="book-title">本の題名</label>
-                  <input id="book-title" className="input" value={title} maxLength={60}
-                    onChange={(e) => onTitle(e.target.value)} placeholder="例：Harry Potter" {...titleHints} />
                   <label className="mini-label" htmlFor="book-lang">学習する言語</label>
                   <select id="book-lang" className="input" value={lang} onChange={(e) => { setLang(e.target.value); setLangTouched(true); setAutoLang(null); }}>
                     {PASTE_LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
                   </select>
+                  <label className="mini-label" htmlFor="book-title">本の題名</label>
+                  <input id="book-title" className="input" value={title} maxLength={60}
+                    onChange={(e) => onTitle(e.target.value)} placeholder="例：Harry Potter" {...titleHints}
+                    onFocus={() => setKbMsg(keyboardLikelyMissing(lang))} />
+                  {kbMsg && (
+                    <p className="kb-warning" role="alert" onClick={() => setKbMsg(false)} data-testid="kb-warning">{t('kb.missing', '選択した言語のキーボードがご使用の機器にダウンロードされていません。')}</p>
+                  )}
                   {autoLang && <p className="pg-note auto-lang" role="status" data-testid="auto-lang">題名から「{langName(autoLang)}」を選びました</p>}
                   <BookStyleFields compact value={style} title={title} onChange={setStyle} />
                 </div>

@@ -142,6 +142,79 @@ function frInfo(entry, surface) {
   return result(tags, { id: 'present', label: '直説法現在', rows, hit }, '現在形のみ。ほかの時制は未対応です');
 }
 
+// ---------- 人称ごとに動詞の形が変わる言語：ドイツ語・ロシア語・アラビア語（直説法現在） ----------
+// 共通の組み立て：forms は persons と同じ並び。tones は人称ごとの色
+function personResult(entry, surface, forms, persons, tones, note, infinitiveIsLemma = true) {
+  const lemma = norm(entry.lemma);
+  const rows = forms.map((f, i) => ({ label: persons[i], form: f, tone: tones[i] }));
+  const hit = forms.map((f, i) => (norm(f) === surface ? i : -1)).filter((i) => i >= 0);
+  let tags = [];
+  if (infinitiveIsLemma && surface === lemma) tags = [{ label: '不定詞（原形）', tone: 'base' }];
+  else if (hit.length) tags = [{ label: '直説法現在', tone: 'tense' }, ...hit.map((i) => ({ label: persons[i], tone: tones[i] }))];
+  return result(tags, { id: 'present', label: '直説法現在', rows, hit }, note);
+}
+const T6 = ['p0', 'p1', 'p2', 'p3', 'p4', 'p5'];
+
+// ドイツ語
+const DE_PERSONS = ['1人称単数（ich）', '2人称単数（du）', '3人称単数（er／sie／es）', '1人称複数（wir）', '2人称複数（ihr）', '3人称複数（sie／Sie）'];
+const DE_IRREGULAR = {
+  sein: ['bin', 'bist', 'ist', 'sind', 'seid', 'sind'],
+  haben: ['habe', 'hast', 'hat', 'haben', 'habt', 'haben'],
+  werden: ['werde', 'wirst', 'wird', 'werden', 'werdet', 'werden'],
+  essen: ['esse', 'isst', 'isst', 'essen', 'esst', 'essen'],
+  sprechen: ['spreche', 'sprichst', 'spricht', 'sprechen', 'sprecht', 'sprechen'],
+  lesen: ['lese', 'liest', 'liest', 'lesen', 'lest', 'lesen'],
+  fahren: ['fahre', 'fährst', 'fährt', 'fahren', 'fahrt', 'fahren'],
+};
+function deForms(entry) {
+  const lemma = norm(entry.lemma);
+  if (DE_IRREGULAR[lemma]) return DE_IRREGULAR[lemma];
+  if (!/動詞/.test(entry.pos) || !/en$/.test(lemma) || /\s/.test(lemma)) return null;
+  const stem = lemma.slice(0, -2);
+  const dt = /[td]$|[^aeiouäöülr]n$|[^aeiouäöülr]m$/.test(stem); // 語幹が t・d などで終わるときは e を挟む（arbeiten → arbeitest）
+  const du = /[sßxz]$/.test(stem) ? `${stem}t` : dt ? `${stem}est` : `${stem}st`;
+  const er = dt ? `${stem}et` : `${stem}t`;
+  return [`${stem}e`, du, er, lemma, er, lemma];
+}
+function deInfo(entry, surface) {
+  const forms = deForms(entry);
+  return forms ? personResult(entry, surface, forms, DE_PERSONS, T6, '現在形のみ。ほかの時制は未対応です') : result([], null);
+}
+
+// ロシア語
+const RU_PERSONS = ['1人称単数（я）', '2人称単数（ты）', '3人称単数（он／она／оно）', '1人称複数（мы）', '2人称複数（вы）', '3人称複数（они）'];
+const RU_IRREGULAR = {
+  любить: ['люблю', 'любишь', 'любит', 'любим', 'любите', 'любят'],
+  говорить: ['говорю', 'говоришь', 'говорит', 'говорим', 'говорите', 'говорят'],
+  хотеть: ['хочу', 'хочешь', 'хочет', 'хотим', 'хотите', 'хотят'],
+  идти: ['иду', 'идёшь', 'идёт', 'идём', 'идёте', 'идут'],
+};
+function ruForms(entry) {
+  const lemma = norm(entry.lemma);
+  if (RU_IRREGULAR[lemma]) return RU_IRREGULAR[lemma];
+  if (!/動詞/.test(entry.pos)) return null;
+  if (/[аяе]ть$/.test(lemma)) { const st = lemma.slice(0, -2); return [`${st}ю`, `${st}ешь`, `${st}ет`, `${st}ем`, `${st}ете`, `${st}ют`]; } // читать → читаю, читаешь…
+  if (/ить$/.test(lemma)) { const st = lemma.slice(0, -3); return [`${st}ю`, `${st}ишь`, `${st}ит`, `${st}им`, `${st}ите`, `${st}ят`]; }
+  return null;
+}
+function ruInfo(entry, surface) {
+  const forms = ruForms(entry);
+  return forms ? personResult(entry, surface, forms, RU_PERSONS, T6, '現在形のみ。ほかの時制は未対応です') : result([], null);
+}
+
+// アラビア語（辞書にある動詞だけ。母音記号は省略）。2・3人称の単数に男性・女性がある
+const AR_PERSONS = ['1人称単数（أنا）', '2人称単数・男性（أنتَ）', '2人称単数・女性（أنتِ）', '3人称単数・男性（هو）', '3人称単数・女性（هي）', '1人称複数（نحن）', '2人称複数・男性（أنتم）', '3人称複数・男性（هم）'];
+const AR_TONES = ['p0', 'p1', 'p1', 'p2', 'p2', 'p3', 'p4', 'p5'];
+const AR_TABLES = {
+  'أحب': ['أحب', 'تحب', 'تحبين', 'يحب', 'تحب', 'نحب', 'تحبون', 'يحبون'],
+  'قرأ': ['أقرأ', 'تقرأ', 'تقرئين', 'يقرأ', 'تقرأ', 'نقرأ', 'تقرؤون', 'يقرؤون'],
+};
+function arInfo(entry, surface) {
+  const forms = AR_TABLES[entry.lemma];
+  // アラビア語の見出し語は1人称単数の形なので、「不定詞」とは表示しない
+  return forms ? personResult(entry, surface, forms, AR_PERSONS, AR_TONES, '現在形のみ。母音記号は省略しています', false) : result([], null);
+}
+
 // entry: 辞書エントリ（lemma, pos, conj, forms）, surface: 本文中の表記
 // 返り値: { form: ラベルをつなげた文字列|null, formTags: [{label, tone}],
 //          table: { title, tenses:[{id, label, rows:[{label, form}], hit:[行番号]}], note? }|null }
@@ -150,5 +223,8 @@ export function inflectInfo(lang, entry, surface) {
   if (lang === 'en') return enInfo(entry, s);
   if (lang === 'es') return esInfo(entry, s);
   if (lang === 'fr') return frInfo(entry, s);
+  if (lang === 'de') return deInfo(entry, s);
+  if (lang === 'ru') return ruInfo(entry, s);
+  if (lang === 'ar') return arInfo(entry, s);
   return result([], null);
 }

@@ -5,10 +5,12 @@ import PagePaper from '../components/PagePaper.jsx';
 import TextEditSheet from '../components/TextEditSheet.jsx';
 import { updateMaterial, removeMaterial } from '../lib/storage.js';
 import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
+import { useBackHandler } from '../lib/backRegistry.js';
 
 // 1冊の本：進捗・今日の目標・次のページの登録・登録済みページ一覧
 export default function BookDetail({ bookId, onBack, onRead, onBooksChanged, onMaterialsChanged }) {
   const tut = useScreenTutorial('book');
+  useBackHandler(onBack);
   const [book, setBook] = useState(() => loadBooks().find((b) => b.id === bookId));
   const [materials, setMaterials] = useState(() => loadMaterials());
   const [page, setPage] = useState(() => (book ? nextPageNumber(book) : 1));
@@ -20,7 +22,7 @@ export default function BookDetail({ bookId, onBack, onRead, onBooksChanged, onM
     return (
       <div className="screen">
         <header className="topbar">
-          <button className="btn ghost" onClick={onBack}>← 戻る</button>
+          <button className="btn ghost back-btn" onClick={onBack}>← 戻る</button>
           <h2 className="title">本</h2><span className="topbar-spacer" />
         </header>
         <main className="content"><p className="empty">この本は見つかりませんでした。</p></main>
@@ -74,7 +76,7 @@ export default function BookDetail({ bookId, onBack, onRead, onBooksChanged, onM
   return (
     <div className="screen">
       <header className="topbar">
-        <button className="btn ghost" onClick={onBack} aria-label="戻る">← 戻る</button>
+        <button className="btn ghost back-btn" onClick={onBack} aria-label="戻る">← 戻る</button>
         <h2 className="title">{book.title}</h2>
         <HelpButton onClick={tut.show} />
       </header>

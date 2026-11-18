@@ -14,6 +14,7 @@ import Reading from '../components/Reading.jsx';
 import { loadAlwaysDetail, saveAlwaysDetail } from '../lib/detailPref.js';
 import { loadSettings } from '../lib/settings.js';
 import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
+import { useBackHandler } from '../lib/backRegistry.js';
 
 // 例文の中の学習対象の語を目立たせる
 function Context({ context, text }) {
@@ -35,12 +36,13 @@ export default function Review({ filter, onExit }) {
   // 開始時点の出題リストを固定する
   const [cards, setCards] = useState(() => {
     const now = Date.now();
-    const pool = loadWordbook().filter((w) => matchesFilter(w, filter));
+    const pool = loadWordbook().filter((w) => matchesFilter(w, filter) && (!filter.ids || filter.ids.includes(w.id))); // ids：復習予定のカテゴリー別テスト
     const byDue = (a, b) => (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity);
     if (filter.scope === 'due') return pool.filter((w) => isDue(w, now)).sort(byDue);
     return [...pool.filter((w) => isDue(w, now)).sort(byDue), ...pool.filter((w) => !isDue(w, now)).sort(byDue)];
   });
   const tut = useScreenTutorial('review');
+  useBackHandler(onExit);
   const [i, setI] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [stats, setStats] = useState({ ok: 0, ng: 0, mastered: 0 });
@@ -99,7 +101,7 @@ export default function Review({ filter, onExit }) {
           ← 終了
         </button>
         <h2 className="title">{filter.scope === 'due' ? '単語の復習' : '単語テスト'}</h2>
-        <SpeedSwitch className="in-topbar" />
+        <span className="topbar-spacer" />
         <HelpButton onClick={tut.show} />
       </header>
 
@@ -226,6 +228,7 @@ export default function Review({ filter, onExit }) {
           </section>
         )}
       </main>
+      <SpeedSwitch floating />
       {tut.node}
     </div>
   );

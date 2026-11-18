@@ -13,12 +13,15 @@ import FormTags from '../components/FormTags.jsx';
 import ConjTable from '../components/ConjTable.jsx';
 import SpeakButton from '../components/SpeakButton.jsx';
 import SpeedSwitch from '../components/SpeedSwitch.jsx';
+import { useBackHandler } from '../lib/backRegistry.js';
+import { recordUse, uxVisible } from '../lib/uxExperiment.js';
 import { t } from '../lib/i18n.js';
 import Reading from '../components/Reading.jsx';
 import { loadAlwaysDetail, saveAlwaysDetail } from '../lib/detailPref.js';
 import { loadSettings, highlightColor, posCategory } from '../lib/settings.js';
 import { translateSentences, translateSelection } from '../lib/translate.js';
-import { addToWordbook, upsertMaterial } from '../lib/storage.js';
+import { addToWordbook, upsertMaterial, markStudied } from '../lib/storage.js';
+import { studyMs, IDLE_MS } from '../lib/studyRule.js';
 import TitleSheet from '../components/TitleSheet.jsx';
 import { textKey } from '../lib/folders.js';
 import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
@@ -67,12 +70,29 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
   //  range: { id, kind:'range', text, result|null, card:'bottom'|'top' }（画面固定カード）
   const [popup, setPopup] = useState(null);
   const tut = useScreenTutorial('reader');
+
+  // 文章の画面を、触りながら5分以上開いていたら「学習した」と判定する（ノートの「読んだ」・最後に学習した日）
+  useEffect(() => {
+    const id = session.materialId;
+    if (!id) return undefined;
+    const st = { ms: 0, last: Date.now(), done: false };
+    const touch = () => { st.last = Date.now(); };
+    const evs = ['pointerdown', 'keydown', 'scroll', 'wheel', 'touchstart'];
+    evs.forEach((e) => window.addEventListener(e, touch, { passive: true, capture: true }));
+    const iv = window.setInterval(() => {
+      if (st.done || document.visibilityState !== 'visible' || Date.now() - st.last > IDLE_MS) return; // 触っていない間は数えない
+      st.ms += 1000;
+      if (st.ms >= studyMs()) { st.done = true; markStudied(id); }
+    }, 1000);
+    return () => { window.clearInterval(iv); evs.forEach((e) => window.removeEventListener(e, touch, { capture: true })); };
+  }, [session.materialId]);
   const settings = useMemo(loadSettings, []); // ホームの「設定」で決めた内容（色分けなど）
   const [alwaysDetail, setAlwaysDetail] = useState(loadAlwaysDetail); // 「いつも詳しく」設定
   const [openDetailId, setOpenDetailId] = useState(null); // 「詳しく見る」を開いた小窓の id
   const [openTableId, setOpenTableId] = useState(null); // 活用表を開いた小窓の id
   const [toast, setToast] = useState('');
   const [saving, setSaving] = useState(false);
+  const [leave, setLeave] = useState(null); // 保存していないハイライトがあるまま、戻る／移動しようとしたときの確認 { move, run }
 
   // 日本語訳（各段落の直下に表示）
   const [showTrans, setShowTrans] = useState(false);
@@ -460,11 +480,22 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
     else setSheetOpen(true);
   };
 
-  // 前後の文章へ。保存していないハイライトがあるときは、確認する
+  // 戻る・前後の文章へ移るとき、保存していないハイライトがあれば、確認の窓を出す
+  const requestLeave = (run, move = false) => {
+    if (highlights.length > 0 && !saving) setLeave({ run, move });
+    else run();
+  };
+  const handleBack = () => requestLeave(onBack);
+  useBackHandler(handleBack);
   const go = (m) => {
     if (!m) return;
-    if (highlights.length > 0 && !window.confirm(t('nav.confirm', '保存していないハイライトがあります。移動しますか？'))) return;
-    onGoto?.(m);
+    requestLeave(() => onGoto?.(m), true);
+  };
+  const saveAndLeave = async () => {
+    const run = leave?.run;
+    setLeave(null);
+    await handleSave();
+    run?.();
   };
 
   // ---- 描画 ----
@@ -495,18 +526,21 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
   return (
     <div className="screen reader">
       <header className="topbar">
-        <button className="btn ghost" onClick={onBack} aria-label="戻る">
+        <button className="btn ghost back-btn" onClick={handleBack} aria-label="戻る">
           ← 戻る
         </button>
         <h2 className="title">{displayTitle}</h2>
-        <button
-          className="btn primary small"
-          onClick={handleSave}
-          disabled={highlights.length === 0 || saving}
-          aria-label="ハイライトした単語を保存"
-        >
-          保存{highlights.length > 0 ? ` (${highlights.length})` : ''}
-        </button>
+        {uxVisible('save', 'top') ? (
+          <button
+            className="btn primary small"
+            onClick={() => { recordUse('save', 'top'); handleSave(); }}
+            disabled={highlights.length === 0 || saving}
+            aria-label="ハイライトした単語を保存"
+            data-testid="save-top"
+          >
+            保存{highlights.length > 0 ? ` (${highlights.length})` : ''}
+          </button>
+        ) : <span className="topbar-spacer" />}
       </header>
 
       {meta?.note && <div className="note">{meta.note}</div>}
@@ -530,7 +564,7 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
             {showTrans ? '🌐 日本語訳を隠す' : '🌐 日本語訳を表示'}
           </button>
         </div>
-        <div className="speed-row">🔊 <SpeedSwitch /> <HelpButton onClick={tut.show} /></div>
+        <div className="speed-row"><HelpButton onClick={tut.show} /></div>
 
         <p className="reader-tip">
           タップ：単語の意味＋ハイライト（再タップで解除） ／ 長押し・ドラッグ：選んだ文やフレーズを翻訳
@@ -700,7 +734,15 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
           {toast}
         </div>
       )}
-      {nav && (nav.prev || nav.next || nav.isBook) && (
+      {/* 画面下の操作：保存（中央）・前後の文章（右）・音声の速さ（右下）。翻訳カードが出ている間は、かぶらないよう隠す */}
+      {!range && (
+        <>
+          {uxVisible('save', 'bottom') && (
+            <button className="save-pill" onClick={() => { recordUse('save', 'bottom'); handleSave(); }} disabled={highlights.length === 0 || saving} data-testid="save-bottom" aria-label="ハイライトした単語を保存">
+              {t('reader.save', '保存')}{highlights.length > 0 ? ` (${highlights.length})` : ''}
+            </button>
+          )}
+          {nav && (nav.prev || nav.next || nav.isBook) && (
         <nav className="reader-nav" data-testid="reader-nav" aria-label={nav.kind === 'page' ? t('nav.pages', 'ページの移動') : t('nav.texts', '文章の移動')}>
           <button className="btn reader-nav-btn" disabled={!nav.prev} onClick={() => go(nav.prev)} data-testid="nav-prev"
             aria-label={nav.kind === 'page' ? t('nav.prevpage', '前のページ') : t('nav.prevtext', '前の文章')}>‹</button>
@@ -710,6 +752,23 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
           <button className="btn reader-nav-btn" disabled={!nav.next && !nav.isBook} onClick={() => (nav.next ? go(nav.next) : onAddPage?.())} data-testid="nav-next"
             aria-label={nav.kind === 'page' ? (nav.next ? t('nav.nextpage', '次のページ') : t('nav.addpage', '次のページを登録')) : t('nav.nexttext', '次の文章')}>›</button>
         </nav>
+      )}
+          <SpeedSwitch floating />
+        </>
+      )}
+
+      {leave && (
+        <div className="sheet-backdrop" onClick={() => setLeave(null)}>
+          <div className="sheet menu-sheet" role="alertdialog" aria-label={t('leave.title', '単語を保存せずに戻りますか？')} onClick={(e) => e.stopPropagation()} data-testid="leave-dialog">
+            <h3 className="sheet-title menu-title">{leave.move ? t('leave.title.move', '単語を保存せずに移動しますか？') : t('leave.title', '単語を保存せずに戻りますか？')}</h3>
+            <p className="menu-confirm">{t('leave.body', 'ハイライトした単語が {n} 個、まだ保存されていません。', { n: highlights.length })}</p>
+            <div className="menu-actions">
+              <button className="btn primary block" onClick={saveAndLeave} data-testid="leave-save">{leave.move ? t('leave.save.move', '保存して移動') : t('leave.save', '保存して戻る')}</button>
+              <button className="btn block danger-text" onClick={() => { const r = leave.run; setLeave(null); r?.(); }} data-testid="leave-discard">{leave.move ? t('leave.discard.move', 'そのまま移動') : t('leave.discard', 'そのまま戻る')}</button>
+              <button className="btn ghost block" onClick={() => setLeave(null)}>{t('common.cancel', 'キャンセル')}</button>
+            </div>
+          </div>
+        </div>
       )}
       {tut.node}
     </div>

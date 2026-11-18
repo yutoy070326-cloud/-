@@ -49,10 +49,9 @@ export function computeSummary(startedAt, now = Date.now()) {
   const readByBook = {};
   const texts = []; // 本のページ以外で、今回読んだ文章
   for (const m of loadMaterials()) {
-    const at = m.lastStudiedAt ?? m.savedAt ?? 0;
-    if (at < startedAt) continue;
-    if (m.kind === 'book' && m.bookId) readByBook[m.bookId] = (readByBook[m.bookId] ?? 0) + 1;
-    else texts.push({ kind: m.kind, source: m.source, title: m.title, topic: m.topic, artist: m.artist });
+    if (m.kind === 'book' && m.bookId) {
+      if ((m.savedAt ?? 0) >= startedAt) readByBook[m.bookId] = (readByBook[m.bookId] ?? 0) + 1;
+    } else if ((m.studiedAt ?? 0) >= startedAt) texts.push({ kind: m.kind, source: m.source, title: m.title, topic: m.topic, artist: m.artist });
   }
   const bookRows = Object.entries(readByBook)
     .map(([id, read]) => {

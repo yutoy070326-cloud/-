@@ -4,15 +4,17 @@ import StampCard from '../components/StampCard.jsx';
 import ToyBlock from '../components/ToyBlock.jsx';
 import { loadShelf } from '../lib/shelf.js';
 import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
+import { useBackHandler } from '../lib/backRegistry.js';
 
 export default function StampScreen({ onBack }) {
   const tut = useScreenTutorial('stamps');
+  useBackHandler(onBack);
   const shelf = useMemo(loadShelf, []);
   const done = Math.floor(shelf.stamps.length / 10);
   return (
     <div className="screen">
       <header className="topbar">
-        <button className="btn ghost" onClick={onBack}>{t('common.back', '← 戻る')}</button>
+        <button className="btn ghost back-btn" onClick={onBack}>{t('common.back', '← 戻る')}</button>
         <h2 className="title">{t('stamp.title', '🎴 スタンプカード')}</h2>
         <HelpButton onClick={tut.show} />
       </header>

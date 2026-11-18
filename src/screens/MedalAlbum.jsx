@@ -3,11 +3,13 @@ import { Medal } from '../components/FinishFlow.jsx';
 import { loadMedals, markMedalsSeen, MEDAL_TIERS, medalDesc } from '../lib/diary.js';
 import { t, uiLocale } from '../lib/i18n.js';
 import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
+import { useBackHandler } from '../lib/backRegistry.js';
 
 // メダルアルバム：獲得したメダルが並ぶ。まだのメダルは「？？？」で、手に入れ方もわからない。
 // 獲得して初めてアルバムを開いたときは、そのメダルに赤文字の「NEW」が付く。
 export default function MedalAlbum({ onBack }) {
   const tut = useScreenTutorial('medals');
+  useBackHandler(onBack);
   const medals = useMemo(loadMedals, []);
   const fresh = useMemo(() => new Set(medals.filter((m) => m.seen === false).map((m) => m.id)), [medals]);
   useEffect(() => { markMedalsSeen(); }, []); // この画面を見たので、次からは NEW を外す
@@ -16,7 +18,7 @@ export default function MedalAlbum({ onBack }) {
   return (
     <div className="screen">
       <header className="topbar">
-        <button className="btn ghost" onClick={onBack}>{t('common.back', '← 戻る')}</button>
+        <button className="btn ghost back-btn" onClick={onBack}>{t('common.back', '← 戻る')}</button>
         <h2 className="title">{t('medal.title', '🏅 メダルアルバム')}</h2>
         <HelpButton onClick={tut.show} />
       </header>

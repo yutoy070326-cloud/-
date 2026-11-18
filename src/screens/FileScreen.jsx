@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { loadMaterials, loadFiles, removeMaterial, updateMaterial, renameFile, removeFile } from '../lib/storage.js';
+import { loadMaterials, loadFiles, removeMaterial, updateMaterial, renameFile, removeFile, ensureFile } from '../lib/storage.js';
 import TextEditSheet from '../components/TextEditSheet.jsx';
 import { langName } from '../lib/storyAI.js';
 import TitleSheet from '../components/TitleSheet.jsx';
 import { useScreenTutorial, HelpButton } from '../components/ScreenTutorial.jsx';
+import { useBackHandler } from '../lib/backRegistry.js';
 
 const KIND_LABEL = { article: '記事', lyrics: '歌詞', exam: '長文問題', ai: 'AI物語', other: 'ファイル' };
 
 // ライブラリのファイルを開いたときの画面：中に入っている文章を選んで学習する
 export default function FileScreen({ fileId, onBack, onOpen, onChanged }) {
   const tut = useScreenTutorial('file');
+  useBackHandler(onBack);
   const [file, setFile] = useState(() => loadFiles().find((f) => f.id === fileId));
   const [list, setList] = useState(() => loadMaterials().filter((m) => m.fileId === fileId));
   const [renaming, setRenaming] = useState(null); // material
@@ -23,7 +25,7 @@ export default function FileScreen({ fileId, onBack, onOpen, onChanged }) {
     return (
       <div className="screen">
         <header className="topbar">
-          <button className="btn ghost" onClick={onBack}>← 戻る</button>
+          <button className="btn ghost back-btn" onClick={onBack}>← 戻る</button>
           <h2 className="title">ファイル</h2><span className="topbar-spacer" />
         </header>
         <main className="content"><p className="empty">このファイルは見つかりませんでした。</p></main>
@@ -52,8 +54,12 @@ export default function FileScreen({ fileId, onBack, onOpen, onChanged }) {
     onChanged?.();
   };
 
-  const doEdit = ({ title, text }) => {
-    const r = updateMaterial(renaming.id, { title, text });
+  const doEdit = (f) => {
+    const patch = { ...f };
+    // 記事のトピック・歌詞のアーティストを変えたら、その名前のファイルに移す（なければ作る）
+    if (file.kind === 'article' && f.topic && f.topic !== renaming.topic) patch.fileId = ensureFile('article', f.topic).file.id;
+    if (file.kind === 'lyrics' && f.artist && f.artist !== renaming.artist) patch.fileId = ensureFile('lyrics', f.artist).file.id;
+    const r = updateMaterial(renaming.id, patch);
     if (!r.ok) return r.error;
     setRenaming(null);
     reload();
@@ -81,7 +87,7 @@ export default function FileScreen({ fileId, onBack, onOpen, onChanged }) {
   return (
     <div className="screen">
       <header className="topbar">
-        <button className="btn ghost" onClick={onBack} aria-label="戻る">← 戻る</button>
+        <button className="btn ghost back-btn" onClick={onBack} aria-label="戻る">← 戻る</button>
         <h2 className="title" data-testid="file-title">📁 {file.name}</h2>
         <HelpButton onClick={tut.show} />
       </header>
@@ -148,7 +154,9 @@ export default function FileScreen({ fileId, onBack, onOpen, onChanged }) {
       </main>
 
       {renaming && (
-        <TextEditSheet heading="文章を編集" lang={renaming.lang} initialTitle={renaming.title} initialText={renaming.text} onSave={doEdit} onClose={() => setRenaming(null)} />
+        <TextEditSheet heading="文章を編集" lang={renaming.lang} initialTitle={renaming.title} initialText={renaming.text}
+          extra={{ kind: file.kind, lang: renaming.lang, topic: renaming.topic, artist: renaming.artist, fileId: renaming.fileId, files: loadFiles().filter((x) => x.kind === file.kind) }}
+          onSave={doEdit} onClose={() => setRenaming(null)} />
       )}
       {renameFileOpen && (
         <TitleSheet heading="ファイル名を変更" initial={file.name} confirmLabel="変更する" error={fileError}

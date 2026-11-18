@@ -15,6 +15,8 @@ export const BLOCK_SHAPES = [
   { id: 'hexagon', label: '六角形' },
   { id: 'arch', label: 'アーチ' },
 ];
+// 上に物を乗せると不安定そうな形（本やファイルを乗せると、シーソーのように揺れる）
+export const UNSTABLE_SHAPES = ['triangle', 'circle', 'star', 'semicircle', 'arch'];
 export const BLOCK_COLORS = ['#ef5350', '#ffb300', '#66bb6a', '#42a5f5', '#ab47bc', '#ff7043', '#26c6da', '#ec407a'];
 
 const EMPTY = { order: { books: [], files: [] }, blocks: [], stamps: [], sort: 'manual' };
@@ -54,6 +56,7 @@ export function newBlock(now = Date.now(), rng = Math.random) {
     id: `blk-${now}-${Math.floor(rng() * 1e6)}`,
     shape: BLOCK_SHAPES[Math.floor(rng() * BLOCK_SHAPES.length)].id,
     color: BLOCK_COLORS[Math.floor(rng() * BLOCK_COLORS.length)],
+    scale: Math.round((0.7 + rng() * 0.9) * 100) / 100, // 大きさ（0.7〜1.6倍）。もらうたびにランダム
     pile: null, // null＝持っているだけ（まだ山に置いていない）／'books'／'files'
     at: now,
   };

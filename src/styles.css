@@ -812,7 +812,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tray-btn { flex: none; white-space: nowrap; }
 .stack-item.draggable { touch-action: none; cursor: grab; }
 .stack-item.dragging { cursor: grabbing; }
-.stack-item.toy-slot { width: 44px; min-width: 44px; background: none; box-shadow: none; overflow: visible; display: flex; align-items: flex-end; justify-content: center; }
+.stack-item.toy-slot { width: var(--bw, 44px); min-width: var(--bw, 44px); background: none; box-shadow: none; overflow: visible; display: flex; align-items: flex-end; justify-content: center; }
 .toy { display: block; }
 .tray-list { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
 .tray-item { display: flex; align-items: center; gap: 8px; }
@@ -825,8 +825,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .case-spine.pending { visibility: hidden; }
 .case-title { position: absolute; inset: 22px 0 6px; display: flex; justify-content: center; align-items: flex-start; writing-mode: vertical-rl; font-size: 11px; font-weight: 800; color: #fff; overflow: hidden; text-shadow: 0 1px 2px rgba(0, 0, 0, .55); }
 .case-star { position: absolute; top: 2px; left: 0; right: 0; text-align: center; font-size: 13px; line-height: 1; }
-.case-spine.stamping .case-star { animation: star-show 0s .7s backwards; }
-.stamp-fx { position: absolute; left: 50%; top: 50%; font-size: 40px; line-height: 1; transform: translate(-50%, -50%); pointer-events: none; opacity: 0; z-index: 5; animation: stamp-press .8s ease-out; }
+.case-spine.stamping .case-star { animation: star-show 0s 1.5s backwards; }
+.stamp-fx { position: absolute; left: 50%; top: 50%; font-size: 40px; line-height: 1; transform: translate(-50%, -50%); pointer-events: none; opacity: 0; z-index: 5; animation: stamp-press 1.8s ease-out; }
 @keyframes stamp-press { 0% { transform: translate(-50%, -50%) scale(4) rotate(-30deg); opacity: 0; } 45% { transform: translate(-50%, -50%) scale(1) rotate(8deg); opacity: 1; } 60% { transform: translate(-50%, -50%) scale(1.25) rotate(-4deg); } 100% { transform: translate(-50%, -50%) scale(.4) rotate(0); opacity: 0; } }
 @keyframes star-show { from { opacity: 0; } }
 
@@ -893,3 +893,71 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .mode-card { position: relative; width: 100%; }
 .mode-chev { position: absolute; top: 10px; right: 12px; font-size: 11px; color: var(--muted); }
 .danger-zone { margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--line); }
+
+.tip-card { margin-bottom: 8px; padding: 10px 12px; border-radius: 12px; background: #fff6d6; border: 1px solid #f0dc9a; }
+.tip-head { font-size: 12px; font-weight: 800; color: #8a6a00; }
+.tip-text { margin: 4px 0 2px; font-size: 14px; line-height: 1.6; }
+.tip-next { padding: 0; font-size: 12px; }
+
+.fly-skip { position: fixed; inset: 0; z-index: 35; cursor: pointer; }
+.fly-skip-hint { position: absolute; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 6px 14px; border-radius: 16px; background: rgba(31,29,26,.75); color: #fff; font-size: 12px; }
+
+/* ===== 音声の速さ：🐢 ←🏃‍♀️→ 🐇 ===== */
+.speed-slider { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 18px; background: rgba(255, 255, 255, .96); box-shadow: 0 2px 8px rgba(0, 0, 0, .25); font-size: 15px; user-select: none; -webkit-user-select: none; }
+.speed-slider.floating { position: fixed; right: 10px; bottom: calc(70px + env(safe-area-inset-bottom)); z-index: 46; }
+.speed-end { font-size: 16px; line-height: 1; }
+.speed-track { position: relative; width: 104px; height: 34px; touch-action: none; cursor: pointer; }
+.speed-rail { position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: 2px; background: #cfc7b8; }
+.speed-notch { position: absolute; top: 50%; width: 2px; height: 10px; margin: -5px 0 0 -1px; background: #a39d92; }
+.speed-notch.one { height: 16px; margin-top: -8px; background: #1f1d1a; }
+.speed-thumb { position: absolute; top: 50%; width: 32px; height: 32px; margin: -16px 0 0 -16px; padding: 0; border: 2px solid #3b5bdb; border-radius: 50%; background: #fff; font-size: 18px; line-height: 1; cursor: grab; touch-action: none; }
+.speed-val { min-width: 36px; text-align: center; font-size: 12px; }
+.speed-reset { width: 28px; height: 28px; padding: 0; border: 1px solid #cfc7b8; border-radius: 50%; background: #fff; font-size: 15px; line-height: 1; cursor: pointer; }
+.speed-row { display: flex; justify-content: flex-end; margin: -4px 0 6px; }
+.review { padding-bottom: 90px; }
+
+/* ===== 画面下の操作（保存・戻る・前後）===== */
+.save-pill { position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 45; padding: 10px 16px; border: none; border-radius: 24px; background: #3b5bdb; color: #fff; font: inherit; font-size: 14px; font-weight: 700; box-shadow: 0 4px 12px rgba(0, 0, 0, .3); cursor: pointer; }
+.save-pill:disabled { opacity: .45; }
+.back-pill { position: fixed; left: 12px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 45; padding: 10px 14px; border: none; border-radius: 24px; background: #1f1d1a; color: #fff; font: inherit; font-size: 13px; font-weight: 700; box-shadow: 0 4px 12px rgba(0, 0, 0, .35); cursor: pointer; }
+.reader-nav { left: auto; right: 10px; transform: none; gap: 6px; padding: 4px 8px; }
+.reader-nav-label { min-width: 52px; font-size: 12px; }
+.home-fab { bottom: calc(70px + env(safe-area-inset-bottom)); width: 46px; height: 46px; font-size: 21px; }
+[data-ux-back='bottom'] .back-btn { visibility: hidden; }
+
+/* ===== 復習の予定（ステップ → 時刻 → 単語）===== */
+.sched { margin-top: 12px; }
+.sched-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; }
+.sched-row.empty { opacity: .45; cursor: default; }
+.sched-label { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; }
+.sched-count { margin-left: auto; font-size: 13px; color: var(--muted); }
+.sched-row .sched-label + .sched-count { margin-left: 0; }
+.sched-chev { color: var(--muted); font-size: 18px; }
+.sched-test { flex: none; }
+.sched-back { padding: 4px 0; border: none; background: none; font: inherit; font-size: 13px; color: var(--accent, #3b5bdb); cursor: pointer; }
+
+/* ===== シーソー：不安定な形の積み木の上に乗ったブロックが、ゆらゆら揺れる ===== */
+.stack-item.seesaw { transform-origin: 50% 100%; animation: block-drop .8s backwards, seesaw var(--sp, 3s) ease-in-out calc(var(--d, 0ms) + 1s) infinite alternate; }
+@keyframes seesaw { from { transform: rotate(calc(var(--tilt, 3deg) * -1)); } to { transform: rotate(var(--tilt, 3deg)); } }
+.stack-item.dragging { animation: none !important; }
+.stack-item.toy-slot.unstable .toy { animation: toy-wobble 2.6s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+@keyframes toy-wobble { from { transform: rotate(-1.5deg); } to { transform: rotate(1.5deg); } }
+@media (prefers-reduced-motion: reduce) { .stack-item.seesaw, .stack-item.toy-slot.unstable .toy { animation: none; } }
+
+/* ===== おもちゃ箱（積み木の保存欄）===== */
+.toybox-sheet { padding-bottom: 14px; }
+.toybox { position: relative; margin: 4px 0 8px; filter: drop-shadow(0 6px 8px rgba(60, 35, 10, .3)); }
+.toybox-lid { display: flex; align-items: center; justify-content: center; height: 40px; border-radius: 12px 12px 0 0; background: repeating-linear-gradient(90deg, #d9534f 0 24px, #f4c542 24px 48px); border: 3px solid #8a5a2b; border-bottom: none; font-weight: 800; color: #3a2410; text-shadow: 0 1px 0 rgba(255, 255, 255, .6); }
+.toybox-lid span { padding: 2px 14px; border-radius: 10px; background: rgba(255, 255, 255, .82); }
+.toybox-body { position: relative; min-height: 150px; padding: 12px 10px; border: 3px solid #8a5a2b; border-radius: 0 0 14px 14px; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .07) 0 2px, transparent 2px 34px), linear-gradient(#c58a4e, #a86d37); box-shadow: inset 0 8px 14px rgba(0, 0, 0, .3); }
+.toybox-body::before, .toybox-body::after { content: ''; position: absolute; top: 0; bottom: 0; width: 10px; background: #8a5a2b; }
+.toybox-body::before { left: 0; } .toybox-body::after { right: 0; }
+.toybox-pile { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: center; gap: 2px 4px; max-height: 40vh; overflow-y: auto; padding: 6px 12px; }
+.toybox-empty { margin: 0; padding: 40px 0; text-align: center; color: #f5deb8; font-size: 13px; }
+.toybox-block { padding: 2px; border: 2px solid transparent; border-radius: 10px; background: transparent; cursor: pointer; transform: rotate(var(--r, 0deg)); transition: transform .15s; }
+.toybox-block:hover { transform: rotate(var(--r, 0deg)) translateY(-3px); }
+.toybox-block.sel { border-color: #fff; background: rgba(255, 255, 255, .25); transform: rotate(0deg) translateY(-6px) scale(1.1); }
+.toybox-actions { display: flex; gap: 8px; margin-bottom: 6px; }
+.toybox-actions .btn { flex: 1; }
+
+.kb-warning { margin: 4px 0 0; padding: 6px 10px; border-radius: 8px; background: #ffe3e3; color: #a12a2a; font-size: 12px; line-height: 1.5; cursor: pointer; }
