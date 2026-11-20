@@ -522,6 +522,12 @@ export default function Reader({ session, onBack, onWordbookChanged, onMaterials
   };
 
   const range = popup?.kind === 'range' ? popup : null;
+  // 翻訳カードが出ている間は、App 側の「戻る」「ホームへ」も隠す（かぶらないように）
+  useEffect(() => {
+    if (range) document.body.dataset.rangeOpen = '1';
+    else delete document.body.dataset.rangeOpen;
+    return () => { delete document.body.dataset.rangeOpen; };
+  }, [range]);
 
   return (
     <div className="screen reader">

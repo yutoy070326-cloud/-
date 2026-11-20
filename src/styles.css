@@ -937,8 +937,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .sched-back { padding: 4px 0; border: none; background: none; font: inherit; font-size: 13px; color: var(--accent, #3b5bdb); cursor: pointer; }
 
 /* ===== シーソー：不安定な形の積み木の上に乗ったブロックが、ゆらゆら揺れる ===== */
-.stack-item.seesaw { transform-origin: 50% 100%; animation: block-drop .8s backwards, seesaw var(--sp, 3s) ease-in-out calc(var(--d, 0ms) + 1s) infinite alternate; }
-@keyframes seesaw { from { transform: rotate(calc(var(--tilt, 3deg) * -1)); } to { transform: rotate(var(--tilt, 3deg)); } }
 .stack-item.dragging { animation: none !important; }
 .stack-item.toy-slot.unstable .toy { animation: toy-wobble 2.6s ease-in-out infinite alternate; transform-origin: 50% 100%; }
 @keyframes toy-wobble { from { transform: rotate(-1.5deg); } to { transform: rotate(1.5deg); } }
@@ -961,3 +959,32 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .toybox-actions .btn { flex: 1; }
 
 .kb-warning { margin: 4px 0 0; padding: 6px 10px; border-radius: 8px; background: #ffe3e3; color: #a12a2a; font-size: 12px; line-height: 1.5; cursor: pointer; }
+
+/* ===== シーソーのかたまり ===== */
+.seesaw-group { display: flex; flex-direction: column; align-items: center; gap: 0; transform-origin: 50% 100%; animation: seesaw var(--sp, 3s) ease-in-out 1.2s infinite alternate; }
+.seesaw-group.paused { animation: none; }
+@keyframes seesaw { from { transform: rotate(calc(var(--tilt, 3deg) * -1)); } to { transform: rotate(var(--tilt, 3deg)); } }
+@media (prefers-reduced-motion: reduce) { .seesaw-group { animation: none; } }
+.stack.settled .stack-item { animation: none; }
+.pile { gap: 0; }
+.stack-item { margin-top: 2px; }
+.seesaw-group > .stack-item:first-child { margin-top: 0; }
+.stack-item.toy-slot { margin-top: 0; margin-bottom: -1px; }
+.stack-item.toy-slot + .stack-item, .seesaw-group + .stack-item.toy-slot { margin-top: 0; }
+
+/* ===== ライブラリの「積み木」ボタン：おもちゃ箱のデザイン ===== */
+.toybox-btn { flex: none; display: inline-flex; flex-direction: column; padding: 0; border: none; background: none; cursor: pointer; filter: drop-shadow(0 2px 3px rgba(60, 35, 10, .35)); font: inherit; }
+.toybox-btn-lid { display: block; height: 9px; border-radius: 5px 5px 0 0; background: repeating-linear-gradient(90deg, #d9534f 0 9px, #f4c542 9px 18px); border: 2px solid #8a5a2b; border-bottom: none; }
+.toybox-btn-body { display: block; padding: 5px 10px 6px; border: 2px solid #8a5a2b; border-radius: 0 0 8px 8px; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .08) 0 1px, transparent 1px 7px), linear-gradient(#c58a4e, #a86d37); color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap; text-shadow: 0 1px 1px rgba(60, 35, 10, .6); }
+.toybox-btn:active .toybox-btn-lid { transform: translateY(-2px) rotate(-3deg); transform-origin: left bottom; }
+
+/* ===== ヒント・豆知識の画面 ===== */
+.tip-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(160deg, #fff7e0, #ffe9c7 60%, #ffd9d0); }
+.tip-screen-body { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(92vw, 420px); padding: 28px 22px; border-radius: 22px; background: #fffdf2; box-shadow: 0 10px 30px rgba(0, 0, 0, .15); text-align: center; animation: char-pop .5s both cubic-bezier(.3, 1.5, .5, 1); }
+.tip-screen-ico { font-size: 56px; }
+.tip-screen-title { margin: 0; font-size: 18px; }
+.tip-screen-text { margin: 0; font-size: 17px; line-height: 1.8; }
+.tip-screen-go { margin-top: 10px; }
+
+/* 翻訳カードが出ている間は、「戻る」「ホームへ」も隠す */
+body[data-range-open='1'] .back-pill, body[data-range-open='1'] .home-fab { display: none; }

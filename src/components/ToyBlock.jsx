@@ -34,9 +34,19 @@ function Shape({ shape, color }) {
   }
 }
 
+// 形ごとの上端（枠の上の余白を切り落として、上に乗せたものとの隙間をなくす）
+const TOP = { square: 7, triangle: 7, circle: 5, trapezoid: 11, star: 5, semicircle: 29, hexagon: 8, arch: 5 };
+// 描いたあとの実際の幅と高さ（size は 60×60 の枠を何pxで描くか）
+export function toyDims(shape, size = 52) {
+  const y0 = TOP[shape] ?? 7;
+  return { w: size, h: Math.round((size * (60 - y0)) / 60) };
+}
+
 export default function ToyBlock({ shape, color, size = 52 }) {
+  const y0 = TOP[shape] ?? 7;
+  const { w, h } = toyDims(shape, size);
   return (
-    <svg className="toy" width={size} height={size} viewBox="0 0 60 60" aria-hidden="true" data-shape={shape}>
+    <svg className="toy" width={w} height={h} viewBox={`0 ${y0} 60 ${60 - y0}`} aria-hidden="true" data-shape={shape}>
       <ellipse cx="30" cy="57.5" rx="22" ry="2.6" fill="rgba(0,0,0,.2)" />
       <Shape shape={shape} color={color} />
       <ellipse cx="22" cy="22" rx="6" ry="3.4" fill="rgba(255,255,255,.35)" transform="rotate(-30 22 22)" />

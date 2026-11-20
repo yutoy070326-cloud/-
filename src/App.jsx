@@ -21,6 +21,7 @@ import FinishFlow from './components/FinishFlow.jsx';
 import NotesScreen from './screens/NotesScreen.jsx';
 import MedalAlbum from './screens/MedalAlbum.jsx';
 import StampScreen from './screens/StampScreen.jsx';
+import TipScreen from './screens/TipScreen.jsx';
 import LoginBonus from './components/LoginBonus.jsx';
 import { claimLoginBonus } from './lib/shelf.js';
 import { startSession, loadSession, clearSession, oppositeChar, finishSession, syncSessionNote, updateNote } from './lib/diary.js';
@@ -161,9 +162,10 @@ export default function App() {
     return { kind, prev: i > 0 ? list[i - 1] : null, next: i >= 0 && i < list.length - 1 ? list[i + 1] : null, index: i + 1, total: list.length, isBook: !!cur.bookId };
   };
 
-  const startReading = useCallback((s) => {
+  // opts.tip: 文章・物語に進む前に「ヒント・豆知識」の画面を挟む（ペーストして学習をはじめたとき・本のページを登録したとき・AI物語を作ったとき）
+  const startReading = useCallback((s, opts) => {
     setSession({ ...s, id: Date.now() });
-    setScreen('reader');
+    setScreen(opts?.tip ? 'tip' : 'reader');
   }, []);
 
   return (
@@ -172,7 +174,7 @@ export default function App() {
         <Home
           wordCount={wordCount}
           shelfCount={shelfCount}
-          onStart={startReading}
+          onStart={(s2) => startReading(s2, { tip: true })}
           onOpenWordbook={() => {
             setWb({ view: 'list', lang: session?.lang });
             setScreen('wordbook');
@@ -200,6 +202,7 @@ export default function App() {
           }}
         />
       )}
+      {screen === 'tip' && session && <TipScreen key={session.id} onContinue={() => setScreen('reader')} />}
       {screen === 'reader' && session && (
         <Reader
           key={session.id}
@@ -280,7 +283,7 @@ export default function App() {
           onStart={(sess) => {
             // 読み終えたら、追加先のファイルに戻る
             const m = loadMaterials().find((x) => x.id === sess.materialId);
-            startReading({ ...sess, ...(m?.fileId ? { fromFile: m.fileId } : {}) });
+            startReading({ ...sess, ...(m?.fileId ? { fromFile: m.fileId } : {}) }, { tip: true });
           }}
         />
       )}
@@ -291,7 +294,7 @@ export default function App() {
           onMaterialsChanged={refreshShelf}
           onRead={(s, id) => {
             setBookId(id);
-            startReading(s);
+            startReading(s, { tip: true });
           }}
         />
       )}
@@ -302,7 +305,7 @@ export default function App() {
           onBack={() => setScreen('library')}
           onBooksChanged={() => {}}
           onMaterialsChanged={refreshShelf}
-          onRead={(s) => startReading(s)}
+          onRead={(s, _id, opts) => startReading(s, opts)}
         />
       )}
       {screen === 'review' && (
@@ -333,10 +336,10 @@ export default function App() {
       {screen === 'notes' && <NotesScreen onBack={() => setScreen('home')} />}
       {screen === 'medals' && <MedalAlbum onBack={() => setScreen('home')} />}
       {screen === 'stamps' && <StampScreen onBack={() => setScreen('home')} />}
-      {phase === 'app' && screen !== 'home' && uxVisible('back', 'bottom') && (
+      {phase === 'app' && screen !== 'home' && screen !== 'tip' && uxVisible('back', 'bottom') && (
         <button className="back-pill" onClick={() => { recordUse('back', 'bottom'); runBack(); }} data-testid="back-bottom" aria-label={t('common.back', '← 戻る')}>{t('common.back', '← 戻る')}</button>
       )}
-      {phase === 'app' && screen !== 'home' && trail.length >= 2 && (
+      {phase === 'app' && screen !== 'home' && screen !== 'tip' && trail.length >= 2 && (
         <button className="home-fab" onClick={() => setScreen('home')} aria-label={t('common.home', 'ホームに戻る')} data-testid="home-fab">🏠</button>
       )}
       {toast && phase === 'app' && <div className="toast" role="status" data-testid="toast">{toast}</div>}

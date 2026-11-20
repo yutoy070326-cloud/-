@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import Chips from './Chips.jsx';
-import LearningTip from './LearningTip.jsx';
 import { loadFiles, ensureFile, upsertMaterial } from '../lib/storage.js';
 import { PASTE_LANGUAGES, langName, SAMPLE_PASTE } from '../lib/storyAI.js';
 import { detectLanguage, inputHints } from '../lib/langDetect.js';
@@ -116,7 +115,6 @@ export default function PasteForm({ fixedKind, onStart, onOpenBookNew, onMateria
 
   return (
     <section className="panel">
-      <LearningTip />
       {!fixedKind && (
         <>
           <label className="field-label">文章の種類</label>
@@ -195,7 +193,7 @@ export default function PasteForm({ fixedKind, onStart, onOpenBookNew, onMateria
         className="textarea"
         rows={9}
         {...hints}
-        placeholder={kind === 'lyrics' ? 'ここに学びたい歌詞を貼り付けてください' : 'ここに学びたい文章を貼り付けてください'}
+        placeholder={kind === 'lyrics' ? 'ここに学びたい歌詞を貼り付けてください' : kind === 'exam' ? '学びたい問題を貼り付けてください' : 'ここに学びたい文章を貼り付けてください'}
         value={text}
         onChange={(e) => { setText(e.target.value); detect(e.target.value, 'body'); }}
       />

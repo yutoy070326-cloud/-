@@ -62,7 +62,7 @@ export default function BookDetail({ bookId, onBack, onRead, onBooksChanged, onM
     const r = addBookPage(book.id, page, text);
     if (!r.ok) return r.error;
     onMaterialsChanged?.();
-    onRead(sessionOf(r.material), book.id);
+    onRead(sessionOf(r.material), book.id, { tip: true }); // ページを登録して学習をはじめるときは、ヒントの画面を挟む
     return undefined;
   };
 

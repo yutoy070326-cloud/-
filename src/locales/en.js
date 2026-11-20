@@ -347,5 +347,6 @@ export default {
  "lib.toybox": "Toy box",
  "lib.tray.pick": "Where do you want to put it?",
  "lib.tray.hint2": "Tap a block to choose it, then place it on the book stack or file stack. Between stacks, it works as a bookend or divider.",
- "kb.missing": "The keyboard for the selected language has not been downloaded on your device."
+ "kb.missing": "The keyboard for the selected language has not been downloaded on your device.",
+ "tip.go": "Continue to the text ›"
 };
